@@ -122,6 +122,8 @@ void    svc( void ) {
     INT16               call_type;
     static INT16        do_print = 10;
     INT32				Time;
+    INT32				Temp;
+    INT32				Status;
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print > 0 ) {
@@ -139,6 +141,13 @@ void    svc( void ) {
     		break;
     	case SYSNUM_TERMINATE_PROCESS:
     		Z502_HALT();
+    		break;
+    	//Added for Test1a
+    	case SYSNUM_SLEEP:
+    		Temp = 777;
+    		MEM_WRITE( Z502TimerStart, &Temp );
+    		MEM_READ( Z502TimerStatus, &Status );
+    		ZCALL( Z502_IDLE() );
     		break;
     	default:
     		printf("ERROR! call_type not recognized!\n");
