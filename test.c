@@ -117,10 +117,12 @@ void    test1a( void )  {
        STEP( 0 )
                 printf( "This is Release %s:  Test 1a\n", CURRENT_REL );
                 GET_TIME_OF_DAY( &time1 );
+                printf( "Time1 of day is %ld\n", time1 );
        STEP( 1 )
                 SLEEP ( sleep_time );
        STEP( 2 )
-                GET_TIME_OF_DAY( &time2 );
+               GET_TIME_OF_DAY( &time2 );
+       	   	   printf( "Time2 of day is %ld\n", time2 );
        STEP( 3 )
                 printf( "sleep time= %d, elapsed time= %d\n",
                         sleep_time, time2 - time1 );

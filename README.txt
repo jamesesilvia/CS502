@@ -10,5 +10,16 @@ Tests Complete:
 Test0
 
 In Progress:
-Test1a - Step1
+Test1a
+	- Added os.c with similar OS functions
+		. Implemented OS_Create_Process
+	- Added userdefs.h
+		. Created PCB_t typedef for process control block
+	- To Do:
+		. Start_Timer and sleep functionality
+		. Timer Queue
+		. Interrupt_Handler
+
+Build Status:
+Compiled Successfully
 
