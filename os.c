@@ -11,6 +11,9 @@ extern void          *TO_VECTOR [];
 extern INT32         CALLING_ARGC;
 extern char          **CALLING_ARGV;
 
+int 			inc_pid=0;
+int			current_pid;
+
 /************************************************************************
     OS_SWITCH_CONTEXT_COMPLETE
         The hardware, after completing a process switch, calls this routine
@@ -74,15 +77,20 @@ void    os_init( void )
 
 }                                               /* End of os_init       */
 
-void	OS_Create_Process( void ){
-	void			*next_context;
+int	OS_Create_Process( void ){
 	PCB_t			PCB;
+	
+	inc_pid++;
+	current_pid = inc_pid;
 
 	PCB.p_state = READY_STATE;
+	PCB.p_id = inc_pid;
 
-	printf("\nOS_Create_Process called\n");
+	//printf("\nOS_Create_Process called\n");
     //ZCALL( Z502_MAKE_CONTEXT( &PCB.next_context, (void *)test0, USER_MODE ));
 	ZCALL( Z502_MAKE_CONTEXT( &PCB.next_context, (void *)test1a, USER_MODE ));
-    ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB.next_context ));
+	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB.next_context ));
+
+	return inc_pid;
 											/* End off OS_Create_Process */
 }

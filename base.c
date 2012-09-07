@@ -109,7 +109,7 @@ void    fault_handler( void )
     // Clear out this device - we're done with it
     MEM_WRITE(Z502InterruptClear, &Index );
 }                                       /* End of fault_handler */
-
+
 /************************************************************************
     SVC
         The beginning of the OS502.  Used to receive software interrupts.
@@ -121,8 +121,6 @@ void    svc( void ) {
     INT16               call_type;
     static INT16        do_print = 10;
     INT32				Time;
-    INT32				Temp;
-    INT32				Status;
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print > 0 ) {
@@ -143,9 +141,7 @@ void    svc( void ) {
     		break;
     	//Added for Test1a
     	case SYSNUM_SLEEP:
-    		Temp = 100;
-    		MEM_WRITE( Z502TimerStart, &Temp );
-    		MEM_READ( Z502TimerStatus, &Status );
+		Start_Timer();
     		ZCALL( Z502_IDLE() );
     		break;
     	default:
@@ -154,4 +150,12 @@ void    svc( void ) {
     		break;
     }											// End of switch call_type
     //End of Test0 code from slides
-}                                               // End of svc 
+}                                               // End of svc
+
+void Start_Timer( void ) {
+	INT32		Temp=100;
+	INT32		Status;
+	MEM_WRITE( Z502TimerStart, &Temp );
+	MEM_READ( Z502TimerStatus, &Status );
+} 
+
