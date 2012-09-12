@@ -44,6 +44,8 @@ extern Z502_ARG      Z502_ARG4;
 extern Z502_ARG      Z502_ARG5;
 extern Z502_ARG      Z502_ARG6;
 
+extern PCB_t		*ptrFirst;
+
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
                             "get_pid  ", "create   ", "term_proc", 
@@ -141,8 +143,12 @@ void    svc( void ) {
     		break;
     	//Added for Test1a
     	case SYSNUM_SLEEP:
-		Start_Timer();
-    		ZCALL( Z502_IDLE() );
+    		Add_to_Queue(Z502_ARG1.VAL);
+    		Start_Timer();
+    		break;
+    	//Added for Test1b
+    	case SYSNUM_CREATE_PROCESS:
+    		printf("Remove; placeholder");
     		break;
     	default:
     		printf("ERROR! call_type not recognized!\n");
@@ -152,10 +158,20 @@ void    svc( void ) {
     //End of Test0 code from slides
 }                                               // End of svc
 
+void Add_to_Queue(INT32 sleeptime){
+	//printf("\n\nSleeptime %ld\n\n", sleeptime);
+	//printf("\n\nCurrent PID: %d", created_PCB.p_id);
+
+	created_PCB.p_state = RUNNING_STATE;
+	created_PCB.p_counter = sleeptime;
+
+}
+
 void Start_Timer( void ) {
 	INT32		Temp=100;
 	INT32		Status;
 	MEM_WRITE( Z502TimerStart, &Temp );
 	MEM_READ( Z502TimerStatus, &Status );
+	Z502_IDLE();
 } 
 

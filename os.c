@@ -12,7 +12,7 @@ extern INT32         CALLING_ARGC;
 extern char          **CALLING_ARGV;
 
 int 			inc_pid=0;
-int			current_pid;
+PCB_t			created_PCB;
 
 /************************************************************************
     OS_SWITCH_CONTEXT_COMPLETE
@@ -47,10 +47,7 @@ void    os_init( void )
     /* Demonstrates how calling arguments are passed thru to here       */
 
     printf( "Program called with %d arguments:", CALLING_ARGC );
-    for ( i = 0; i < CALLING_ARGC; i++ )
-        printf( " %s", CALLING_ARGV[i] );
     printf( "\n" );
-    printf( "Calling with argument 'sample' executes the sample program.\n" );
 
     /*          Setup so handlers will come to code in base.c           */
 
@@ -67,30 +64,33 @@ void    os_init( void )
         ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &next_context ));
     }                   /* This routine should never return!!           */
 
-    /*  This should be done by a "os_make_process" routine, so that
-        test0 runs on a process recognized by the operating system. */
-//    ZCALL( Z502_MAKE_CONTEXT( &next_context, (void *)test0, USER_MODE ));
-//    ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &next_context ));
-
-// 	9/4/12
-    OS_Create_Process();
+    if (CALLING_ARGC > 1)
+    	OS_Create_Process(CALLING_ARGV[1]);
+    else
+    	OS_Create_Process(NULL);
 
 }                                               /* End of os_init       */
 
-int	OS_Create_Process( void ){
+void	OS_Create_Process( char * proc ){
 	PCB_t			PCB;
-	
-	inc_pid++;
-	current_pid = inc_pid;
+	void 			*procPTR;
 
+    if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test0" ) == 0 ) )
+        procPTR = test0;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1a" ) == 0 ) )
+        procPTR = test1a;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1b" ) == 0 ) )
+            procPTR = test1b;
+    else
+    	procPTR = test1a;
+
+	inc_pid++;
 	PCB.p_state = READY_STATE;
 	PCB.p_id = inc_pid;
 
-	//printf("\nOS_Create_Process called\n");
-    //ZCALL( Z502_MAKE_CONTEXT( &PCB.next_context, (void *)test0, USER_MODE ));
-	ZCALL( Z502_MAKE_CONTEXT( &PCB.next_context, (void *)test1a, USER_MODE ));
-	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB.next_context ));
+	created_PCB = PCB;
 
-	return inc_pid;
+	ZCALL( Z502_MAKE_CONTEXT( &PCB.next_context, procPTR, USER_MODE ));
+	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB.next_context ));
 											/* End off OS_Create_Process */
 }

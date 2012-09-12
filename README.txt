@@ -6,19 +6,15 @@ There will be several tests that build upon each other, with a goal
 of developing an OS capable of handling several user requests. In its
 original state, there was a thin kernel built, with simulated HW.
 
-Tests Complete:
+Succesful Tests:
 Test0
-
-In Progress:
 Test1a
-	- Added os.c with similar OS functions
-		. Implemented OS_Create_Process
-	- Added userdefs.h
-		. Created PCB_t typedef for process control block
-	- To Do:
-		. Start_Timer and sleep functionality
-		. Timer Queue
-		. Interrupt_Handler
+
+Progress:
+Test1a
+	- Implementing Timing and Ready Queues
+Test1b
+	- Begin debugging queues and rest of test
 
 Build Status:
 Compiled Successfully

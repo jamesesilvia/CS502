@@ -8,11 +8,9 @@
 #define			WAITING_STATE			93
 #define			HALTED_STATE			94
 
-int	OS_Create_Process( void );
+void	OS_Create_Process( char * proc );
+void 	Add_to_Queue( INT32 sleeptime );
 void	Start_Timer( void );
-
-extern int inc_pid;
-extern int current_pid;
 
 typedef         struct {
 	INT32					p_id;
@@ -21,3 +19,7 @@ typedef         struct {
 	void					*next_context;
 
     }PCB_t;
+
+extern 		PCB_t 			created_PCB;
+extern 		int 			inc_pid;
+
