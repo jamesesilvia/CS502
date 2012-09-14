@@ -44,7 +44,11 @@ extern Z502_ARG      Z502_ARG4;
 extern Z502_ARG      Z502_ARG5;
 extern Z502_ARG      Z502_ARG6;
 
-extern PCB_t		*ptrFirst;
+extern void          *TO_VECTOR [];
+extern INT32         CALLING_ARGC;
+extern char          **CALLING_ARGV;
+
+PCB_t				*ptrFirst = NULL;
 
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
@@ -52,6 +56,92 @@ char                 *call_names[] = { "mem_read ", "mem_write",
                             "suspend  ", "resume   ", "ch_prior ", 
                             "send     ", "receive  ", "disk_read",
                             "disk_wrt ", "def_sh_ar" };
+
+int 			inc_pid=0;
+PCB_t			*created_PCB;
+
+/************************************************************************
+    OS_SWITCH_CONTEXT_COMPLETE
+        The hardware, after completing a process switch, calls this routine
+        to see if the OS wants to do anything before starting the user
+        process.
+************************************************************************/
+
+void    os_switch_context_complete( void )
+    {
+    static INT16        do_print = TRUE;
+
+    if ( do_print == TRUE )
+    {
+        printf( "os_switch_context_complete  called before user code.\n");
+        do_print = FALSE;
+    }
+}                               /* End of os_switch_context_complete */
+
+/************************************************************************
+    OS_INIT
+        This is the first routine called after the simulation begins.  This
+        is equivalent to boot code.  All the initial OS components can be
+        defined and initialized here.
+************************************************************************/
+
+void    os_init( void )
+    {
+    void                *next_context;
+    INT32               i;
+
+    /* Demonstrates how calling arguments are passed thru to here       */
+
+    printf( "Program called with %d arguments:", CALLING_ARGC );
+    printf( "\n" );
+
+    /*          Setup so handlers will come to code in base.c           */
+
+    TO_VECTOR[TO_VECTOR_INT_HANDLER_ADDR]   = (void *)interrupt_handler;
+    TO_VECTOR[TO_VECTOR_FAULT_HANDLER_ADDR] = (void *)fault_handler;
+    TO_VECTOR[TO_VECTOR_TRAP_HANDLER_ADDR]  = (void *)svc;
+
+    /*  Determine if the switch was set, and if so go to demo routine.  */
+
+    if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "sample" ) == 0 ) )
+        {
+        ZCALL( Z502_MAKE_CONTEXT( &next_context,
+                                        (void *)sample_code, KERNEL_MODE ));
+        ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &next_context ));
+    }                   /* This routine should never return!!           */
+
+    if (CALLING_ARGC > 1)
+    	OS_Create_Process(CALLING_ARGV[1]);
+    else
+    	OS_Create_Process(NULL);
+
+}                                               /* End of os_init       */
+
+void	OS_Create_Process( char * proc ){
+	PCB_t			*PCB;
+	void 			*procPTR;
+
+    if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test0" ) == 0 ) )
+        procPTR = test0;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1a" ) == 0 ) )
+        procPTR = test1a;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1b" ) == 0 ) )
+        procPTR = test1b;
+    else
+    	procPTR = test1a;
+
+    //PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
+
+	inc_pid++;
+	PCB->p_state = NEW_STATE;
+	PCB->p_id = inc_pid;
+
+	created_PCB = PCB;
+
+	ZCALL( Z502_MAKE_CONTEXT( &PCB->next_context, procPTR, USER_MODE ));
+	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB->next_context ));
+											/* End off OS_Create_Process */
+}
 
 
 /************************************************************************
@@ -66,6 +156,8 @@ void    interrupt_handler( void ) {
     static BOOL        remove_this_in_your_code = TRUE;   /** TEMP **/
     static INT32       how_many_interrupt_entries = 0;    /** TEMP **/
 
+    INT32 currenttime;
+
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id ); 
     // Set this device as target of our query
@@ -74,7 +166,15 @@ void    interrupt_handler( void ) {
     MEM_READ(Z502InterruptStatus, &status );
 
     // Start of Test1a
-    //switch(device_id):
+    switch(device_id){
+    	case(TIMER):
+    		printf("TIMER INTERRUPT OCCURED");
+    		ZCALL( MEM_READ( Z502ClockStatus, &currenttime ) );
+    		printf("\n\n DEV ID *****%d\n\n", currenttime);
+
+    		break;
+    }
+
 
     /** REMOVE THE NEXT SIX LINES **/
     how_many_interrupt_entries++;                         /** TEMP **/
@@ -143,8 +243,8 @@ void    svc( void ) {
     		break;
     	//Added for Test1a
     	case SYSNUM_SLEEP:
-    		Add_to_Queue(Z502_ARG1.VAL);
-    		Start_Timer();
+    		//Add_to_Queue(Z502_ARG1.VAL);
+    		Start_Timer(Z502_ARG1.VAL);
     		break;
     	//Added for Test1b
     	case SYSNUM_CREATE_PROCESS:
@@ -158,20 +258,29 @@ void    svc( void ) {
     //End of Test0 code from slides
 }                                               // End of svc
 
-void Add_to_Queue(INT32 sleeptime){
+void Add_to_TQueue( PCB_t * entry ){
 	//printf("\n\nSleeptime %ld\n\n", sleeptime);
 	//printf("\n\nCurrent PID: %d", created_PCB.p_id);
+	INT32 currenttime;
 
-	created_PCB.p_state = RUNNING_STATE;
-	created_PCB.p_counter = sleeptime;
+	created_PCB->p_state = RUNNING_STATE;
+	ZCALL( MEM_READ( Z502ClockStatus, &currenttime ) );
 
+	//created_PCB->p_counter = currenttime + sleeptime;
+	//Start_Timer(sleeptime);
+
+	if (ptrFirst == NULL){
+			//ptrFirst = created_PCB;
+			//ptrFirst->next = NULL;
+			//printf("\n\n******%d\n\n", ptrFirst->p_counter);
+			//printf("**");
+	}
 }
 
-void Start_Timer( void ) {
-	INT32		Temp=100;
+void Start_Timer(INT32 Time) {
 	INT32		Status;
-	MEM_WRITE( Z502TimerStart, &Temp );
+	MEM_WRITE( Z502TimerStart, &Time );
 	MEM_READ( Z502TimerStatus, &Status );
-	Z502_IDLE();
+	ZCALL( Z502_IDLE() );
 } 
 

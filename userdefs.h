@@ -1,4 +1,5 @@
 #include        "stdio.h"
+#include		"stdlib.h"
 
 /* Process Control Block Definitions */
 // State
@@ -8,18 +9,21 @@
 #define			WAITING_STATE			93
 #define			HALTED_STATE			94
 
-void	OS_Create_Process( char * proc );
-void 	Add_to_Queue( INT32 sleeptime );
-void	Start_Timer( void );
+#define			TIMER					4
 
 typedef         struct {
 	INT32					p_id;
 	INT32					p_state;
 	INT32					p_counter;
 	void					*next_context;
+	void					*next;
 
     }PCB_t;
 
-extern 		PCB_t 			created_PCB;
+void	OS_Create_Process( char * proc );
+void 	Add_to_TQueue( PCB_t *entry );
+void	Start_Timer( INT32 Time );
+
+extern 		PCB_t 			*created_PCB;
 extern 		int 			inc_pid;
 
