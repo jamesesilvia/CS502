@@ -48,7 +48,9 @@ extern void          *TO_VECTOR [];
 extern INT32         CALLING_ARGC;
 extern char          **CALLING_ARGV;
 
-PCB_t				*ptrFirst = NULL;
+PCB_t				*pidList = NULL;
+PCB_t				*timerList = NULL;
+PCB_t				*readyList = NULL;
 
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
@@ -59,6 +61,85 @@ char                 *call_names[] = { "mem_read ", "mem_write",
 
 int 			inc_pid=0;
 PCB_t			*created_PCB;
+
+
+
+/************************************************************************
+    INTERRUPT_HANDLER
+        When the Z502 gets a hardware interrupt, it transfers control to
+        this routine in the OS.
+************************************************************************/
+void    interrupt_handler( void ) {
+    INT32              device_id;
+    INT32              status;
+    INT32              Index = 0;
+    static BOOL        remove_this_in_your_code = TRUE;   /** TEMP **/
+    static INT32       how_many_interrupt_entries = 0;    /** TEMP **/
+
+    INT32 currenttime;
+
+    // Get cause of interrupt
+    MEM_READ(Z502InterruptDevice, &device_id );
+    // Set this device as target of our query
+    MEM_WRITE(Z502InterruptDevice, &device_id );
+    // Now read the status of this device
+    MEM_READ(Z502InterruptStatus, &status );
+
+    // Start of Test1a
+    switch(device_id){
+    	case(TIMER):
+			if ( rm_from_Queue(timerList, inc_pid) )
+				printf("Successfully removed ID: %d", inc_pid);
+
+    		printf("TIMER INTERRUPT OCCURED\n");
+    		ZCALL( MEM_READ( Z502ClockStatus, &currenttime ) );
+
+    		break;
+    }
+
+
+    /** REMOVE THE NEXT SIX LINES **/
+    how_many_interrupt_entries++;                         /** TEMP **/
+    if ( remove_this_in_your_code && ( how_many_interrupt_entries < 20 ) )
+        {
+        printf( "Interrupt_handler: Found device ID %d with status %d\n",
+                        device_id, status );
+    }
+
+    // Clear out this device - we're done with it
+    MEM_WRITE(Z502InterruptClear, &Index );
+}                                       /* End of interrupt_handler */
+/************************************************************************
+    FAULT_HANDLER
+        The beginning of the OS502.  Used to receive hardware faults.
+************************************************************************/
+
+void    fault_handler( void )
+    {
+    INT32       device_id;
+    INT32       status;
+    INT32       Index = 0;
+
+    // Get cause of interrupt
+    MEM_READ(Z502InterruptDevice, &device_id );
+    // Set this device as target of our query
+    MEM_WRITE(Z502InterruptDevice, &device_id );
+    // Now read the status of this device
+    MEM_READ(Z502InterruptStatus, &status );
+
+    printf( "Fault_handler: Found vector type %d with value %d\n",
+                        device_id, status );
+
+    // Clear out this device - we're done with it
+    MEM_WRITE(Z502InterruptClear, &Index );
+}                                       /* End of fault_handler */
+
+/************************************************************************
+    SVC
+        The beginning of the OS502.  Used to receive software interrupts.
+        All system calls come to this point in the code and are to be
+        handled by the student written code here.
+************************************************************************/
 
 /************************************************************************
     OS_SWITCH_CONTEXT_COMPLETE
@@ -118,7 +199,6 @@ void    os_init( void )
 }                                               /* End of os_init       */
 
 void	OS_Create_Process( char * proc ){
-	PCB_t			*PCB;
 	void 			*procPTR;
 
     if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test0" ) == 0 ) )
@@ -130,7 +210,7 @@ void	OS_Create_Process( char * proc ){
     else
     	procPTR = test1a;
 
-    //PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
+    PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
 
 	inc_pid++;
 	PCB->p_state = NEW_STATE;
@@ -138,86 +218,13 @@ void	OS_Create_Process( char * proc ){
 
 	created_PCB = PCB;
 
+	//Add to Main List
+	add_to_Queue(pidList, created_PCB);
+
 	ZCALL( Z502_MAKE_CONTEXT( &PCB->next_context, procPTR, USER_MODE ));
 	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB->next_context ));
 											/* End off OS_Create_Process */
 }
-
-
-/************************************************************************
-    INTERRUPT_HANDLER
-        When the Z502 gets a hardware interrupt, it transfers control to
-        this routine in the OS. 
-************************************************************************/
-void    interrupt_handler( void ) {
-    INT32              device_id;
-    INT32              status;
-    INT32              Index = 0;
-    static BOOL        remove_this_in_your_code = TRUE;   /** TEMP **/
-    static INT32       how_many_interrupt_entries = 0;    /** TEMP **/
-
-    INT32 currenttime;
-
-    // Get cause of interrupt
-    MEM_READ(Z502InterruptDevice, &device_id ); 
-    // Set this device as target of our query
-    MEM_WRITE(Z502InterruptDevice, &device_id );
-    // Now read the status of this device
-    MEM_READ(Z502InterruptStatus, &status );
-
-    // Start of Test1a
-    switch(device_id){
-    	case(TIMER):
-    		printf("TIMER INTERRUPT OCCURED");
-    		ZCALL( MEM_READ( Z502ClockStatus, &currenttime ) );
-    		printf("\n\n DEV ID *****%d\n\n", currenttime);
-
-    		break;
-    }
-
-
-    /** REMOVE THE NEXT SIX LINES **/
-    how_many_interrupt_entries++;                         /** TEMP **/
-    if ( remove_this_in_your_code && ( how_many_interrupt_entries < 20 ) )
-        {
-        printf( "Interrupt_handler: Found device ID %d with status %d\n",
-                        device_id, status );
-    }
-
-    // Clear out this device - we're done with it
-    MEM_WRITE(Z502InterruptClear, &Index );
-}                                       /* End of interrupt_handler */
-/************************************************************************
-    FAULT_HANDLER
-        The beginning of the OS502.  Used to receive hardware faults.
-************************************************************************/
-
-void    fault_handler( void )
-    {
-    INT32       device_id;
-    INT32       status;
-    INT32       Index = 0;
-
-    // Get cause of interrupt
-    MEM_READ(Z502InterruptDevice, &device_id ); 
-    // Set this device as target of our query
-    MEM_WRITE(Z502InterruptDevice, &device_id );
-    // Now read the status of this device
-    MEM_READ(Z502InterruptStatus, &status );
-
-    printf( "Fault_handler: Found vector type %d with value %d\n", 
-                        device_id, status );
-
-    // Clear out this device - we're done with it
-    MEM_WRITE(Z502InterruptClear, &Index );
-}                                       /* End of fault_handler */
-
-/************************************************************************
-    SVC
-        The beginning of the OS502.  Used to receive software interrupts.
-        All system calls come to this point in the code and are to be
-        handled by the student written code here.
-************************************************************************/
 
 void    svc( void ) {
     INT16               call_type;
@@ -243,7 +250,7 @@ void    svc( void ) {
     		break;
     	//Added for Test1a
     	case SYSNUM_SLEEP:
-    		//Add_to_Queue(Z502_ARG1.VAL);
+    		add_to_Queue( timerList, created_PCB );
     		Start_Timer(Z502_ARG1.VAL);
     		break;
     	//Added for Test1b
@@ -258,7 +265,73 @@ void    svc( void ) {
     //End of Test0 code from slides
 }                                               // End of svc
 
-void Add_to_TQueue( PCB_t * entry ){
+int add_to_Queue( PCB_t *ptrFirst, PCB_t * entry ){
+
+	//ID and Name Check
+	//To return 0
+
+	//First Case
+	if ( ptrFirst == NULL){
+		ptrFirst = entry;
+		return 1;
+	}
+
+	//Add to start of list
+	else{
+		ptrFirst->prev = entry;
+		ptrFirst = entry;
+		return 1;
+	}
+	return 0;
+}
+
+int rm_from_Queue( PCB_t *ptrFirst, int remove_id){
+	PCB_t * ptrDel = ptrFirst;
+	PCB_t * ptrPrev = NULL;
+	PCB_t * ptrNext = NULL;
+
+	while ( ptrDel != NULL ){
+		if (ptrDel->p_id == remove_id){
+			//First ID
+			if ( ptrPrev == NULL){
+				ptrFirst = ptrDel->next;
+				ptrFirst->prev = NULL;
+				printf("FOUND THE FIRST ONE");
+				return 1;
+			}
+			//Last ID
+			else if (ptrNext == NULL){
+				ptrPrev->next = NULL;
+				return 1;
+
+			}
+			else{
+				ptrPrev->next = ptrDel->next;
+				ptrNext->prev = ptrDel->prev;
+				return 1;
+			}
+		}
+		ptrPrev = ptrDel;
+		ptrDel = ptrDel->next;
+		ptrNext = ptrDel->next;
+	}
+	//No ID in PCB List
+	return 0;
+}
+
+int pid_Bounce( PCB_t *ptrFirst, int id_check) {
+	PCB_t * ptrCheck = ptrFirst;
+
+	while (ptrCheck != NULL){
+		if (ptrCheck->p_id == id_check){
+			return 0;
+		}
+		ptrCheck = ptrCheck->next;
+	}
+	return 1;
+}
+
+/*void Add_to_TQueue( PCB_t *ptrFirst, PCB_t * entry ){
 	//printf("\n\nSleeptime %ld\n\n", sleeptime);
 	//printf("\n\nCurrent PID: %d", created_PCB.p_id);
 	INT32 currenttime;
@@ -275,7 +348,7 @@ void Add_to_TQueue( PCB_t * entry ){
 			//printf("\n\n******%d\n\n", ptrFirst->p_counter);
 			//printf("**");
 	}
-}
+}*/
 
 void Start_Timer(INT32 Time) {
 	INT32		Status;
