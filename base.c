@@ -48,9 +48,9 @@ extern void          *TO_VECTOR [];
 extern INT32         CALLING_ARGC;
 extern char          **CALLING_ARGV;
 
-PCB_t				*pidList = NULL;
-PCB_t				*timerList = NULL;
-PCB_t				*readyList = NULL;
+PCB_t		     *pidList = NULL;
+PCB_t		     *timerList = NULL;
+PCB_t		     *readyList = NULL;
 
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
@@ -60,9 +60,9 @@ char                 *call_names[] = { "mem_read ", "mem_write",
                             "disk_wrt ", "def_sh_ar" };
 
 int 			inc_pid=0;
-PCB_t			*created_PCB;
+int			total_pid=0;
 
-
+static PCB_t		*current_PCB = NULL;
 
 /************************************************************************
     INTERRUPT_HANDLER
@@ -73,10 +73,7 @@ void    interrupt_handler( void ) {
     INT32              device_id;
     INT32              status;
     INT32              Index = 0;
-    static BOOL        remove_this_in_your_code = TRUE;   /** TEMP **/
-    static INT32       how_many_interrupt_entries = 0;    /** TEMP **/
-
-    INT32 currenttime;
+    INT32 		currenttime;
 
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id );
@@ -88,22 +85,13 @@ void    interrupt_handler( void ) {
     // Start of Test1a
     switch(device_id){
     	case(TIMER):
-			if ( rm_from_Queue(timerList, inc_pid) )
-				printf("Successfully removed ID: %d", inc_pid);
+		if ( rm_from_Queue(&timerList, inc_pid, NOCOUNT) )
+			printf("Successfully removed ID: %d", inc_pid);
 
     		printf("TIMER INTERRUPT OCCURED\n");
     		ZCALL( MEM_READ( Z502ClockStatus, &currenttime ) );
 
     		break;
-    }
-
-
-    /** REMOVE THE NEXT SIX LINES **/
-    how_many_interrupt_entries++;                         /** TEMP **/
-    if ( remove_this_in_your_code && ( how_many_interrupt_entries < 20 ) )
-        {
-        printf( "Interrupt_handler: Found device ID %d with status %d\n",
-                        device_id, status );
     }
 
     // Clear out this device - we're done with it
@@ -134,12 +122,6 @@ void    fault_handler( void )
     MEM_WRITE(Z502InterruptClear, &Index );
 }                                       /* End of fault_handler */
 
-/************************************************************************
-    SVC
-        The beginning of the OS502.  Used to receive software interrupts.
-        All system calls come to this point in the code and are to be
-        handled by the student written code here.
-************************************************************************/
 
 /************************************************************************
     OS_SWITCH_CONTEXT_COMPLETE
@@ -170,8 +152,9 @@ void    os_init( void )
     {
     void                *next_context;
     INT32               i;
-
-    /* Demonstrates how calling arguments are passed thru to here       */
+    void		*procPTR;
+    
+   /* Demonstrates how calling arguments are passed thru to here       */
 
     printf( "Program called with %d arguments:", CALLING_ARGC );
     printf( "\n" );
@@ -182,6 +165,7 @@ void    os_init( void )
     TO_VECTOR[TO_VECTOR_FAULT_HANDLER_ADDR] = (void *)fault_handler;
     TO_VECTOR[TO_VECTOR_TRAP_HANDLER_ADDR]  = (void *)svc;
 
+
     /*  Determine if the switch was set, and if so go to demo routine.  */
 
     if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "sample" ) == 0 ) )
@@ -191,15 +175,7 @@ void    os_init( void )
         ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &next_context ));
     }                   /* This routine should never return!!           */
 
-    if (CALLING_ARGC > 1)
-    	OS_Create_Process(CALLING_ARGV[1]);
-    else
-    	OS_Create_Process(NULL);
 
-}                                               /* End of os_init       */
-
-void	OS_Create_Process( char * proc ){
-	void 			*procPTR;
 
     if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test0" ) == 0 ) )
         procPTR = test0;
@@ -209,27 +185,83 @@ void	OS_Create_Process( char * proc ){
         procPTR = test1b;
     else
     	procPTR = test1a;
+	
+    OS_Create_Process("test1a", procPTR, 0, &i, &i, 1);
+}                                               /* End of os_init       */
 
-    PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
+INT32	OS_Create_Process( char * name, void * procPTR, INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH){
+
+	printf("\n\nTOTAL PIDs %d\n\n", total_pid);
 
 	inc_pid++;
+
+	if (priority < 0){
+		printf("BAD PRIORITY");
+		(*error) = ERR_BAD_PARAM;
+		return -1;
+	}
+	if (pidList != NULL){
+		if(check_name(&pidList, name) == 0){
+			printf("Duplicate Name");
+			(*error) = ERR_BAD_PARAM;
+			return -1;
+		}	
+	}
+	if (total_pid >= MAX_PIDs){
+		printf("Exceeded max nubmer of PIDs\n");
+		(*error) = ERR_BAD_PARAM;
+		return -1;
+	}	
+
+    	PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
 	PCB->p_state = NEW_STATE;
 	PCB->p_id = inc_pid;
-
-	created_PCB = PCB;
-
+	memset(PCB->p_name, 0, MAX_NAME+1);
+	strcpy(PCB->p_name,name);
+	PCB->p_priority = priority;
+	
+	if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
+	
 	//Add to Main List
-	add_to_Queue(pidList, created_PCB);
+	add_to_Queue(&pidList, PCB,COUNT);
 
-	ZCALL( Z502_MAKE_CONTEXT( &PCB->next_context, procPTR, USER_MODE ));
-	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB->next_context ));
+	print_queues(&pidList);	
+	(*error) = ERR_SUCCESS;
+	(*pid) = PCB->p_id;
+	
+	if (SWITCH == 1) make_switch_context(PCB, procPTR);
+	else	make_context(PCB, procPTR);
+
+	return 0; 
 											/* End off OS_Create_Process */
 }
+
+void make_switch_context ( PCB_t * PCB, void *procPTR ){
+	current_PCB = PCB;
+	ZCALL( Z502_MAKE_CONTEXT( &PCB->context, procPTR, USER_MODE ));
+	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB->context ));
+}
+
+void make_context ( PCB_t * PCB, void *procPTR ){
+	ZCALL( Z502_MAKE_CONTEXT( &PCB->context, procPTR, USER_MODE ));
+}
+
+void switch_context ( PCB_t * PCB ){
+	current_PCB = PCB;
+	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB->context ));
+}
+
+/************************************************************************
+    SVC
+        The beginning of the OS502.  Used to receive software interrupts.
+        All system calls come to this point in the code and are to be
+        handled by the student written code here.
+************************************************************************/
 
 void    svc( void ) {
     INT16               call_type;
     static INT16        do_print = 10;
-    INT32				Time;
+    INT32		Time;
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print > 0 ) {
@@ -246,17 +278,21 @@ void    svc( void ) {
     		*(INT32 *)Z502_ARG1.PTR = Time;
     		break;
     	case SYSNUM_TERMINATE_PROCESS:
-    		Z502_HALT();
+		printf("\n\nTerminate Process Called\n\n");
+    		terminate_Process( (INT32)Z502_ARG1.VAL, (INT32*)Z502_ARG2.PTR );
     		break;
     	//Added for Test1a
     	case SYSNUM_SLEEP:
-    		add_to_Queue( timerList, created_PCB );
+    		add_to_Queue( &timerList, current_PCB, NOCOUNT );
     		Start_Timer(Z502_ARG1.VAL);
     		break;
     	//Added for Test1b
     	case SYSNUM_CREATE_PROCESS:
-    		printf("Remove; placeholder");
+    		OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR, (INT32)Z502_ARG3.VAL,(INT32*) Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0);
     		break;
+	case SYSNUM_GET_PROCESS_ID:
+		get_PCB_ID(&pidList, (char *)Z502_ARG1.PTR, (INT32 *)Z502_ARG2.PTR, (INT32 *)Z502_ARG3.PTR);
+		break;
     	default:
     		printf("ERROR! call_type not recognized!\n");
     		printf("Entered Call_Type is %i\n", call_type);
@@ -265,62 +301,78 @@ void    svc( void ) {
     //End of Test0 code from slides
 }                                               // End of svc
 
-int add_to_Queue( PCB_t *ptrFirst, PCB_t * entry ){
+int add_to_Queue( PCB_t **ptrFirst, PCB_t * entry, INT32 toCount ){
 
 	//ID and Name Check
 	//To return 0
 
 	//First Case
-	if ( ptrFirst == NULL){
-		ptrFirst = entry;
+	if ( *ptrFirst == NULL){
+		(*ptrFirst) = entry;
+		if (toCount) total_pid++;
 		return 1;
 	}
 
 	//Add to start of list
 	else{
-		ptrFirst->prev = entry;
-		ptrFirst = entry;
+		(*ptrFirst)->prev = entry;
+		entry->next = (*ptrFirst);
+		(*ptrFirst) = entry;
+		if (toCount) total_pid++;
 		return 1;
 	}
 	return 0;
 }
 
-int rm_from_Queue( PCB_t *ptrFirst, int remove_id){
-	PCB_t * ptrDel = ptrFirst;
+void print_queues ( PCB_t **ptrFirst ){
+	if (*ptrFirst == NULL) return;
+	PCB_t * ptrCheck = *ptrFirst;
+	while (ptrCheck != NULL){
+		printf("------------------------------\n");
+		printf("Name: %s\t", ptrCheck->p_name);
+		printf("ID: %d\n", ptrCheck->p_id);
+		printf("Complete\n");
+		ptrCheck = ptrCheck->next;
+	}
+	return;
+}
+
+int rm_from_Queue( PCB_t **ptrFirst, int remove_id, INT32 toCount ){
+	PCB_t * ptrDel = *ptrFirst;
 	PCB_t * ptrPrev = NULL;
-	PCB_t * ptrNext = NULL;
 
 	while ( ptrDel != NULL ){
 		if (ptrDel->p_id == remove_id){
 			//First ID
 			if ( ptrPrev == NULL){
-				ptrFirst = ptrDel->next;
-				ptrFirst->prev = NULL;
-				printf("FOUND THE FIRST ONE");
+				(*ptrFirst) = ptrDel->next;
+				if (toCount) total_pid--;
 				return 1;
 			}
 			//Last ID
-			else if (ptrNext == NULL){
+			else if (ptrDel->next == NULL){
 				ptrPrev->next = NULL;
+				if (toCount) total_pid--;
 				return 1;
 
 			}
 			else{
+				PCB_t * ptrNext = ptrDel->next;
 				ptrPrev->next = ptrDel->next;
 				ptrNext->prev = ptrDel->prev;
+				if (COUNT) total_pid--;
 				return 1;
 			}
 		}
 		ptrPrev = ptrDel;
-		ptrDel = ptrDel->next;
-		ptrNext = ptrDel->next;
+		ptrDel = ptrDel->next;;
 	}
 	//No ID in PCB List
 	return 0;
 }
 
-int pid_Bounce( PCB_t *ptrFirst, int id_check) {
-	PCB_t * ptrCheck = ptrFirst;
+int pid_Bounce( PCB_t **ptrFirst, int id_check ) {
+	PCB_t * ptrCheck = *ptrFirst;
 
 	while (ptrCheck != NULL){
 		if (ptrCheck->p_id == id_check){
@@ -330,6 +382,86 @@ int pid_Bounce( PCB_t *ptrFirst, int id_check) {
 	}
 	return 1;
 }
+
+int check_name( PCB_t **ptrFirst, char *name ){
+	PCB_t *ptrCheck = *ptrFirst;
+
+	while (ptrCheck != NULL){
+		if(strcmp(ptrCheck->p_name, name) == 0){
+			return 0;
+		}
+		ptrCheck = ptrCheck->next;
+	}
+	return 1;
+}
+
+int get_PCB_ID(PCB_t ** ptrFirst, char *name, INT32 *process_ID, INT32 *error){
+	
+	if (strcmp("", name) == 0){
+		(*process_ID) = current_PCB->p_id;
+		(*error) = ERR_SUCCESS;
+		return 0;
+	}
+	PCB_t *ptrCheck = *ptrFirst;
+	while (ptrCheck != NULL){
+		if (strcmp(ptrCheck->p_name, name) == 0){
+			(*process_ID) = ptrCheck->p_id;
+			(*error) = ERR_SUCCESS;
+			return 0;
+		}
+		ptrCheck = ptrCheck->next;
+	}
+	(*error) = ERR_BAD_PARAM;
+	return -1;
+}
+
+void terminate_Process ( INT32 process_ID, INT32 *error ){
+
+	//if pid is -1; terminate self
+	if ( process_ID == -1 ){
+		printf("\nTerminate self\n");
+
+		if (rm_from_Queue(&pidList, process_ID, COUNT)) 
+			(*error) = ERR_SUCCESS;
+		else 	(*error) = ERR_BAD_PARAM;
+
+		if (total_pid > 0){
+			switch_context(pidList);		
+		}
+		else Z502_HALT();
+	}	
+	//if pid -2; terminate self and any child
+	else if ( process_ID == -2 ){
+		printf("\nTerminate self and children\n");
+		rm_children(&pidList, process_ID);
+		
+		if (rm_from_Queue(&pidList, process_ID, COUNT)) 
+			(*error) = ERR_SUCCESS;
+		else 	(*error) = ERR_BAD_PARAM;
+
+		if (total_pid > 0){
+			switch_context(pidList);		
+		}
+		else Z502_HALT();
+	}
+	//remove pid from pidList
+	else{
+		if (rm_from_Queue(&pidList, process_ID, COUNT)) 
+			(*error) = ERR_SUCCESS;
+		else	(*error) = ERR_BAD_PARAM;
+	}
+}
+
+void rm_children ( PCB_t ** ptrFirst, INT32 process_ID ){
+	PCB_t * ptrCheck = *ptrFirst;
+	while (ptrCheck != NULL){
+		if ( ptrCheck->p_parent == process_ID ){
+			rm_from_Queue(&pidList, ptrCheck->p_id, COUNT);
+		}
+		ptrCheck = ptrCheck->next;
+	}
+}
+
 
 /*void Add_to_TQueue( PCB_t *ptrFirst, PCB_t * entry ){
 	//printf("\n\nSleeptime %ld\n\n", sleeptime);
@@ -355,5 +487,5 @@ void Start_Timer(INT32 Time) {
 	MEM_WRITE( Z502TimerStart, &Time );
 	MEM_READ( Z502TimerStatus, &Status );
 	ZCALL( Z502_IDLE() );
-} 
+}
 
