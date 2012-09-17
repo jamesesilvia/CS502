@@ -48,9 +48,10 @@ extern void          *TO_VECTOR [];
 extern INT32         CALLING_ARGC;
 extern char          **CALLING_ARGV;
 
-PCB_t		     *pidList = NULL;
-PCB_t		     *timerList = NULL;
-PCB_t		     *readyList = NULL;
+PCB_t		     	*pidList = NULL;
+PCB_t		     	*timerList = NULL;
+PCB_t		     	*readyList = NULL;
+static PCB_t		*current_PCB = NULL;
 
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
@@ -59,10 +60,10 @@ char                 *call_names[] = { "mem_read ", "mem_write",
                             "send     ", "receive  ", "disk_read",
                             "disk_wrt ", "def_sh_ar" };
 
-int 			inc_pid=0;
-int			total_pid=0;
+INT32	 			inc_pid=0;
+INT32				total_pid=0;
 
-static PCB_t		*current_PCB = NULL;
+
 
 /************************************************************************
     INTERRUPT_HANDLER
@@ -189,9 +190,10 @@ void    os_init( void )
     OS_Create_Process("test1a", procPTR, 0, &i, &i, 1);
 }                                               /* End of os_init       */
 
-INT32	OS_Create_Process( char * name, void * procPTR, INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH){
+INT32	OS_Create_Process( char * name, void * procPTR,
+		INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH){
 
-	printf("\n\nTOTAL PIDs %d\n\n", total_pid);
+	//printf("\n\nTOTAL PIDs %d\n\n", total_pid);
 
 	inc_pid++;
 
@@ -213,7 +215,7 @@ INT32	OS_Create_Process( char * name, void * procPTR, INT32 priority, INT32 *pid
 		return -1;
 	}	
 
-    	PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
+    PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
 	PCB->p_state = NEW_STATE;
 	PCB->p_id = inc_pid;
 	memset(PCB->p_name, 0, MAX_NAME+1);
@@ -225,7 +227,7 @@ INT32	OS_Create_Process( char * name, void * procPTR, INT32 priority, INT32 *pid
 	//Add to Main List
 	add_to_Queue(&pidList, PCB,COUNT);
 
-	print_queues(&pidList);	
+	//print_queues(&pidList);
 	(*error) = ERR_SUCCESS;
 	(*pid) = PCB->p_id;
 	
@@ -288,12 +290,14 @@ void    svc( void ) {
     		break;
     	//Added for Test1b
     	case SYSNUM_CREATE_PROCESS:
-    		OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR, (INT32)Z502_ARG3.VAL,(INT32*) Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0);
+    		OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR,
+    				(INT32)Z502_ARG3.VAL,(INT32*) Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0);
     		break;
-	case SYSNUM_GET_PROCESS_ID:
-		get_PCB_ID(&pidList, (char *)Z502_ARG1.PTR, (INT32 *)Z502_ARG2.PTR, (INT32 *)Z502_ARG3.PTR);
-		break;
-    	default:
+    	case SYSNUM_GET_PROCESS_ID:
+    		get_PCB_ID(&pidList, (char *)Z502_ARG1.PTR,
+    				(INT32 *)Z502_ARG2.PTR, (INT32 *)Z502_ARG3.PTR);
+    		break;
+		default:
     		printf("ERROR! call_type not recognized!\n");
     		printf("Entered Call_Type is %i\n", call_type);
     		break;
@@ -331,13 +335,12 @@ void print_queues ( PCB_t **ptrFirst ){
 		printf("------------------------------\n");
 		printf("Name: %s\t", ptrCheck->p_name);
 		printf("ID: %d\n", ptrCheck->p_id);
-		printf("Complete\n");
 		ptrCheck = ptrCheck->next;
 	}
 	return;
 }
 
-int rm_from_Queue( PCB_t **ptrFirst, int remove_id, INT32 toCount ){
+int rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 toCount ){
 	PCB_t * ptrDel = *ptrFirst;
 	PCB_t * ptrPrev = NULL;
 
@@ -356,6 +359,7 @@ int rm_from_Queue( PCB_t **ptrFirst, int remove_id, INT32 toCount ){
 				return 1;
 
 			}
+			//Middle ID
 			else{
 				PCB_t * ptrNext = ptrDel->next;
 				ptrPrev->next = ptrDel->next;
@@ -371,7 +375,7 @@ int rm_from_Queue( PCB_t **ptrFirst, int remove_id, INT32 toCount ){
 	return 0;
 }
 
-int pid_Bounce( PCB_t **ptrFirst, int id_check ) {
+int pid_Bounce( PCB_t **ptrFirst, INT32 id_check ) {
 	PCB_t * ptrCheck = *ptrFirst;
 
 	while (ptrCheck != NULL){
@@ -419,39 +423,43 @@ void terminate_Process ( INT32 process_ID, INT32 *error ){
 
 	//if pid is -1; terminate self
 	if ( process_ID == -1 ){
-		printf("\nTerminate self\n");
+		//printf("\nTerminate self\n");
 
-		if (rm_from_Queue(&pidList, process_ID, COUNT)) 
+		if (rm_from_Queue(&pidList, current_PCB->p_id, COUNT))
 			(*error) = ERR_SUCCESS;
 		else 	(*error) = ERR_BAD_PARAM;
 
 		if (total_pid > 0){
 			switch_context(pidList);		
 		}
-		else Z502_HALT();
+		else CALL ( Z502_HALT() );
 	}	
 	//if pid -2; terminate self and any child
 	else if ( process_ID == -2 ){
-		printf("\nTerminate self and children\n");
-		rm_children(&pidList, process_ID);
+		//printf("\nTerminate self and children\n");
+		rm_children(&pidList, current_PCB->p_id);
 		
-		if (rm_from_Queue(&pidList, process_ID, COUNT)) 
+		if (rm_from_Queue(&pidList, current_PCB->p_id, COUNT))
 			(*error) = ERR_SUCCESS;
 		else 	(*error) = ERR_BAD_PARAM;
 
 		if (total_pid > 0){
 			switch_context(pidList);		
 		}
-		else Z502_HALT();
+		else CALL ( Z502_HALT() );
 	}
 	//remove pid from pidList
 	else{
 		if (rm_from_Queue(&pidList, process_ID, COUNT)) 
 			(*error) = ERR_SUCCESS;
 		else	(*error) = ERR_BAD_PARAM;
+
+		if (total_pid <= 0){
+			CALL ( Z502_HALT() );
+		}
 	}
 }
-
+//Helper function for terminate process
 void rm_children ( PCB_t ** ptrFirst, INT32 process_ID ){
 	PCB_t * ptrCheck = *ptrFirst;
 	while (ptrCheck != NULL){
