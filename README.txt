@@ -9,12 +9,12 @@ original state, there was a thin kernel built, with simulated HW.
 Successful Tests:
 Test0
 Test1a
+Test1b
 
 Progress:
-Test1a
-	- Implementing Timing and Ready Queues
-Test1b
-	- Begin debugging queues and rest of test
+Test1c
+	- Added sorting algorithms
+	- Need to further explore switch context
 
 Build Status:
 Compiled Successfully

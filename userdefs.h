@@ -10,10 +10,10 @@
 #define			HALTED_STATE			94
 
 #define			TIMER					4
-#define			COUNT			1
-#define			NOCOUNT			0
-#define			MAX_PIDs		100
-#define			MAX_NAME		16
+#define			PID_Q					1
+#define			TIMER_Q					0
+#define			MAX_PIDs				100
+#define			MAX_NAME				16
 
 typedef         struct {
 	char					p_name[MAX_NAME+1];
@@ -21,6 +21,7 @@ typedef         struct {
 	INT32					p_state;
 	INT32					p_priority;
 	INT32					p_parent;
+	INT32					p_time;
 	void					*context;
 	void					*next;
 	void					*prev;
@@ -28,13 +29,14 @@ typedef         struct {
     }PCB_t;
 
 INT32	OS_Create_Process( char *name, void *procPTR, INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
-//void 	Add_to_TQueue( PCB_t *ptrFirst, PCB_t *entry );
 void	Start_Timer( INT32 Time );
 void make_switch_context( PCB_t * PCB, void *procPTR);
 void make_context( PCB_t * PCB, void *procPTR);
 void switch_context( PCB_t * PCB );
-INT32 add_to_Queue( PCB_t **ptrFirst, PCB_t * entry, INT32 toCount );
-INT32 rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 toCount );
+INT32 add_to_Queue( PCB_t **ptrFirst, PCB_t * entry, INT32 listFlag );
+INT32 rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 listFlag );
+void priority_sort( PCB_t ** ptrFirst );
+void timer_sort( PCB_t ** ptrFirst );
 INT32 pid_Bounce( PCB_t **ptrFirst, INT32 id_check);
 INT32 check_name ( PCB_t **ptrFirst, char *name );
 INT32 get_PCB_ID( PCB_t **ptrFirst, char *name, INT32 *process_ID, INT32 *error );
