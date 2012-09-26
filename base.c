@@ -60,10 +60,11 @@ char                 *call_names[] = { "mem_read ", "mem_write",
                             "send     ", "receive  ", "disk_read",
                             "disk_wrt ", "def_sh_ar" };
 
-INT32	 			inc_pid=0;
-INT32				total_pid=0;
+INT32	 			inc_pid = 0;
+INT32				total_pid = 0;
 
-
+volatile 			timer_lock = 0;
+volatile 			ready_lock = 0;
 
 /************************************************************************
     INTERRUPT_HANDLER
@@ -75,6 +76,7 @@ void    interrupt_handler( void ) {
     INT32              status;
     INT32              Index = 0;
     INT32 			   currenttime;
+    INT32 			   success;
 
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id );
@@ -86,12 +88,13 @@ void    interrupt_handler( void ) {
     // Start of Test1a
     switch(device_id){
     	case(TIMER):
-		if ( rm_from_Queue(&timerList, inc_pid, TIMER_Q ) )
-			printf("Successfully removed ID: %d", inc_pid);
+    		CALL( lockTimer() );
+    		CALL( success = rm_from_Queue(&timerList, inc_pid, TIMER_Q ) );
+    		if ( success ) printf("Successfully removed ID: %d", inc_pid);
+    		CALL( unlockTimer() );
 
     		printf("TIMER INTERRUPT OCCURED\n");
     		ZCALL( MEM_READ( Z502ClockStatus, &currenttime ) );
-
     		break;
     }
 
@@ -231,9 +234,11 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
 	
 	//Add to Main List
-	add_to_Queue(&pidList, PCB, PID_Q );
-
+	CALL ( lockReady() );
+	CALL ( add_to_Queue(&pidList, PCB, PID_Q ) );
 	print_queues(&pidList);
+	CALL ( unlockReady() );
+
 	(*error) = ERR_SUCCESS;
 	(*pid) = PCB->p_id;
 	
@@ -289,23 +294,25 @@ void    svc( void ) {
     	//Terminate a process
     	case SYSNUM_TERMINATE_PROCESS:
 		printf("\n\nTerminate Process Called\n\n");
-    		terminate_Process( (INT32)Z502_ARG1.VAL, (INT32*)Z502_ARG2.PTR );
+    		CALL( terminate_Process( (INT32)Z502_ARG1.VAL, (INT32*)Z502_ARG2.PTR ) );
     		break;
     	//Sleep
     	case SYSNUM_SLEEP:
-    		add_to_Queue( &timerList, current_PCB, TIMER );
-    		timer_sort( &timerList );
-    		Start_Timer(Z502_ARG1.VAL);
+    		CALL( lockTimer() );
+    		CALL( add_to_Queue( &timerList, current_PCB, TIMER ) );
+    		CALL( timer_sort( &timerList ) );
+    		CALL( unlockTimer() );
+    		CALL( Start_Timer(Z502_ARG1.VAL) );
     		break;
     	//Create Process
     	case SYSNUM_CREATE_PROCESS:
-    		OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR,
-    				(INT32)Z502_ARG3.VAL,(INT32*)Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0);
+    		CALL( OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR,
+    				(INT32)Z502_ARG3.VAL,(INT32*)Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0) );
     		break;
     	//Get Process ID
     	case SYSNUM_GET_PROCESS_ID:
-    		get_PCB_ID(&pidList, (char *)Z502_ARG1.PTR,
-    				(INT32 *)Z502_ARG2.PTR, (INT32 *)Z502_ARG3.PTR);
+    		CALL( get_PCB_ID(&pidList, (char *)Z502_ARG1.PTR,
+    				(INT32 *)Z502_ARG2.PTR, (INT32 *)Z502_ARG3.PTR) );
     		break;
 		default:
     		printf("ERROR! call_type not recognized!\n");
