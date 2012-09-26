@@ -314,7 +314,7 @@ void    svc( void ) {
     }											// End of switch call_type
 }                                               // End of svc
 
-int add_to_Queue( PCB_t **ptrFirst, PCB_t * entry, INT32 listFlag ){
+INT32 add_to_Queue( PCB_t **ptrFirst, PCB_t * entry, INT32 listFlag ){
 
 	//First Case
 	if ( *ptrFirst == NULL){
@@ -348,7 +348,7 @@ void print_queues ( PCB_t **ptrFirst ){
 	return;
 }
 
-int rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 listFlag ){
+INT32 rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 listFlag ){
 	PCB_t * ptrDel = *ptrFirst;
 	PCB_t * ptrPrev = NULL;
 
@@ -388,7 +388,7 @@ int rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 listFlag ){
 	return 0;
 }
 
-int pid_Bounce( PCB_t **ptrFirst, INT32 id_check ) {
+INT32 pid_Bounce( PCB_t **ptrFirst, INT32 id_check ) {
 	PCB_t * ptrCheck = *ptrFirst;
 
 	while (ptrCheck != NULL){
@@ -400,7 +400,7 @@ int pid_Bounce( PCB_t **ptrFirst, INT32 id_check ) {
 	return 1;
 }
 
-int check_name( PCB_t **ptrFirst, char *name ){
+INT32 check_name( PCB_t **ptrFirst, char *name ){
 	PCB_t *ptrCheck = *ptrFirst;
 
 	while (ptrCheck != NULL){
@@ -412,7 +412,7 @@ int check_name( PCB_t **ptrFirst, char *name ){
 	return 1;
 }
 
-int get_PCB_ID(PCB_t ** ptrFirst, char *name, INT32 *process_ID, INT32 *error){
+INT32 get_PCB_ID(PCB_t ** ptrFirst, char *name, INT32 *process_ID, INT32 *error){
 	
 	if (strcmp("", name) == 0){
 		(*process_ID) = current_PCB->p_id;
@@ -430,6 +430,11 @@ int get_PCB_ID(PCB_t ** ptrFirst, char *name, INT32 *process_ID, INT32 *error){
 	}
 	(*error) = ERR_BAD_PARAM;
 	return -1;
+}
+
+INT32 get_first_ID ( PCB_t ** ptrFirst ){
+	PCB_t *ptrCheck = *ptrFirst;
+	return ptrCheck->p_id;
 }
 
 void terminate_Process ( INT32 process_ID, INT32 *error ){
