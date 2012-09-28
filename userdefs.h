@@ -35,6 +35,7 @@ void	Start_Timer( INT32 Time );
 void 	make_switch_context( PCB_t * PCB, void *procPTR);
 void 	make_context( PCB_t * PCB, void *procPTR);
 void 	switch_context( PCB_t * PCB );
+void 	switch_save_context ( PCB_t * PCB );
 INT32 	add_to_Queue( PCB_t **ptrFirst, PCB_t * entry, INT32 listFlag );
 INT32 	rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 listFlag );
 void 	priority_sort( PCB_t ** ptrFirst );
@@ -46,6 +47,7 @@ INT32 	get_first_ID ( PCB_t ** ptrFirst );
 void 	terminate_Process( INT32 process_ID, INT32 *error );
 void 	rm_children ( PCB_t **ptrFirst, INT32 process_ID );
 void 	print_queues ( PCB_t **ptrFirst );
+INT32 get_currentTime();
 
 extern 		PCB_t 			*created_PCB;
 extern 		INT32 			inc_pid;

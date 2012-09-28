@@ -51,7 +51,7 @@ extern char          **CALLING_ARGV;
 PCB_t		     	*pidList = NULL;
 PCB_t		     	*timerList = NULL;
 PCB_t		     	*readyList = NULL;
-static PCB_t		*current_PCB = NULL;
+PCB_t				*current_PCB = NULL;
 
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
@@ -85,15 +85,23 @@ void    interrupt_handler( void ) {
     // Now read the status of this device
     MEM_READ(Z502InterruptStatus, &status );
 
-    // Start of Test1a
+
     switch(device_id){
     	case(TIMER):
     		CALL( lockTimer() );
-    		CALL( success = rm_from_Queue(&timerList, inc_pid, TIMER_Q ) );
-    		if ( success ) printf("Successfully removed ID: %d", inc_pid);
+    		CALL( lockReady() );
+
+    		CALL ( add_to_Queue(&pidList, timerList, PID_Q) );
+    		CALL( success = rm_from_Queue(&timerList, timerList->p_id, TIMER_Q ) );
+    		if ( success ) printf("Successfully removed ID");
+
+    		CALL( unlockReady() );
     		CALL( unlockTimer() );
 
-    		printf("TIMER INTERRUPT OCCURED\n");
+    		priority_sort(&pidList);
+    		switch_save_context(pidList);
+
+    		printf("\nTIMER INTERRUPT OCCURED\n");
     		ZCALL( MEM_READ( Z502ClockStatus, &currenttime ) );
     		break;
     }
@@ -192,13 +200,13 @@ void    os_init( void )
     else
     	procPTR = test1c;
 	
-    OS_Create_Process(CALLING_ARGV[1], procPTR, 0, &i, &i, 1);
+    OS_Create_Process(CALLING_ARGV[1], procPTR, 100, &i, &i, 1);
 }                                               /* End of os_init       */
 
 INT32	OS_Create_Process( char * name, void * procPTR,
 		INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH){
 
-	//printf("\n\nTOTAL PIDs %d\n\n", total_pid);
+	printf("\n\nTOTAL PIDs %d\n\n", total_pid);
 
 	inc_pid++;
 
@@ -225,7 +233,7 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	PCB->p_state = NEW_STATE;
 	PCB->p_id = inc_pid;
 
-	PCB->p_time = inc_pid;
+	PCB->p_time = 0;
 
 	memset(PCB->p_name, 0, MAX_NAME+1);
 	strcpy(PCB->p_name,name);
@@ -234,10 +242,11 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
 	
 	//Add to Main List
-	CALL ( lockReady() );
-	CALL ( add_to_Queue(&pidList, PCB, PID_Q ) );
-	print_queues(&pidList);
-	CALL ( unlockReady() );
+	CALL( lockReady() );
+	CALL( add_to_Queue(&pidList, PCB, PID_Q ) );
+	CALL( priority_sort(&pidList) );
+	CALL( print_queues(&pidList) );
+	CALL( unlockReady() );
 
 	(*error) = ERR_SUCCESS;
 	(*pid) = PCB->p_id;
@@ -252,7 +261,7 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 void make_switch_context ( PCB_t * PCB, void *procPTR ){
 	current_PCB = PCB;
 	ZCALL( Z502_MAKE_CONTEXT( &PCB->context, procPTR, USER_MODE ));
-	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB->context ));
+	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_SAVE_MODE, &PCB->context ));
 }
 
 void make_context ( PCB_t * PCB, void *procPTR ){
@@ -262,6 +271,11 @@ void make_context ( PCB_t * PCB, void *procPTR ){
 void switch_context ( PCB_t * PCB ){
 	current_PCB = PCB;
 	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &PCB->context ));
+}
+
+void switch_save_context ( PCB_t * PCB ){
+	current_PCB = PCB;
+	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_SAVE_MODE, &PCB->context ));
 }
 
 /************************************************************************
@@ -274,7 +288,8 @@ void switch_context ( PCB_t * PCB ){
 void    svc( void ) {
     INT16               call_type;
     static INT16        do_print = 10;
-    INT32		Time;
+    INT32				Time;
+    INT32 				sleepTime;
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print > 0 ) {
@@ -298,16 +313,24 @@ void    svc( void ) {
     		break;
     	//Sleep
     	case SYSNUM_SLEEP:
+    		sleepTime = Z502_ARG1.VAL;
+    		current_PCB->p_time = (sleepTime + get_currentTime() );
+
     		CALL( lockTimer() );
-    		CALL( add_to_Queue( &timerList, current_PCB, TIMER ) );
-    		CALL( timer_sort( &timerList ) );
+    		CALL( add_to_Queue( &timerList, current_PCB, TIMER_Q ) );
+//    		CALL( timer_sort( &timerList ) );
     		CALL( unlockTimer() );
-    		CALL( Start_Timer(Z502_ARG1.VAL) );
+    		//Based on sorted Timer
+    		//Start Timer on first p_time-current time
+    		CALL( Start_Timer( timerList->p_time-get_currentTime() ) );
+    		//CALL( Start_Timer(sleepTime) );
+
+    		//CALL( switch_context(pidList) );
     		break;
     	//Create Process
     	case SYSNUM_CREATE_PROCESS:
     		CALL( OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR,
-    				(INT32)Z502_ARG3.VAL,(INT32*)Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0) );
+    				(INT32)Z502_ARG3.VAL,(INT32*)Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 1) );
     		break;
     	//Get Process ID
     	case SYSNUM_GET_PROCESS_ID:
@@ -337,6 +360,7 @@ INT32 add_to_Queue( PCB_t **ptrFirst, PCB_t * entry, INT32 listFlag ){
 		(*ptrFirst) = entry;
 		//MAIN LIST
 		if (listFlag) total_pid++;
+
 		return 1;
 	}
 	return 0;
@@ -361,6 +385,7 @@ INT32 rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 listFlag ){
 
 	while ( ptrDel != NULL ){
 		if (ptrDel->p_id == remove_id){
+
 			//First ID
 			if ( ptrPrev == NULL){
 				(*ptrFirst) = ptrDel->next;
@@ -497,6 +522,7 @@ void rm_children ( PCB_t ** ptrFirst, INT32 process_ID ){
 
 void priority_sort( PCB_t ** ptrFirst ){
 	PCB_t * ptrCheck = *ptrFirst;
+	PCB_t * temp = NULL;
 
 	if ( ptrCheck->next == NULL ) return;
 
@@ -504,11 +530,13 @@ void priority_sort( PCB_t ** ptrFirst ){
 
 	while ( ptrNext != NULL ){
 		if ( ptrCheck->p_priority >= ptrNext->p_priority ){
+			temp = ptrCheck;
 			ptrCheck->prev = ptrNext;
 			ptrCheck->next = ptrNext->next;
-			ptrNext->prev = ptrCheck->prev;
-			ptrNext->next = ptrCheck;
+			ptrNext->prev = temp->prev;
+			ptrNext->next = temp;
 		}
+		else return;
 		ptrNext = ptrCheck->next;
 	}
 	return;
@@ -519,40 +547,41 @@ void timer_sort( PCB_t ** ptrFirst ){
 	PCB_t * ptrNext = NULL;
 	PCB_t * temp = NULL;
 
-	for (; ptrCheck->next != NULL; ptrCheck = ptrCheck->next ){
-		for (ptrNext = ptrCheck->next; ptrNext != NULL; ptrNext = ptrNext->next){
-			printf("STUCK%d %d",ptrCheck->p_id, ptrNext->p_id);
-			if ( ptrCheck->p_time >= ptrNext->p_time ){
-				printf("\nptrNext->next ID\n %d", ptrNext->p_id);
-				Z502_HALT();
-				temp = ptrCheck;
-				ptrCheck->prev = ptrNext;
-				ptrCheck->next = ptrNext->next;
-				ptrNext->prev = temp->prev;
-				ptrNext->next = temp;
-			}
-
-		}
-	}
-	return;
-
-//	if ( ptrCheck->next == NULL ) return;
+//	for (; ptrCheck->next != NULL; ptrCheck = ptrCheck->next ){
+//		for (ptrNext = ptrCheck->next; ptrNext != NULL; ptrNext = ptrNext->next){
+//			printf("STUCK%d %d",ptrCheck->p_id, ptrNext->p_id);
+//			if ( ptrCheck->p_time >= ptrNext->p_time ){
+////				printf("\nptrNext->next ID\n %d", ptrNext->p_id);
+////				Z502_HALT();
+//				temp = ptrCheck;
+//				ptrCheck->prev = ptrNext;
+//				ptrCheck->next = ptrNext->next;
+//				ptrNext->prev = temp->prev;
+//				ptrNext->next = temp;
+//			}
 //
-//	 = ptrCheck->next;
-//
-//	while ( ptrNext != NULL ){
-//		if ( ptrCheck->p_time >= ptrNext->p_time ){
-//			printf("STUCK");
-//			temp = ptrCheck;
-//			ptrCheck->prev = ptrNext;
-//			ptrCheck->next = ptrNext->next;
-//			ptrNext->prev = temp->prev;
-//			ptrNext->next = temp;
 //		}
-//		if ( ptrCheck->next == NULL ) return;
-//		ptrNext = ptrCheck->next;
 //	}
 //	return;
+
+	if ( ptrCheck->next == NULL ) return;
+
+	 ptrNext = ptrCheck->next;
+
+	while ( ptrNext != NULL ){
+		if ( ptrCheck->p_time >= ptrNext->p_time ){
+			printf("STUCK%d %d",ptrCheck->p_id, ptrNext->p_id);
+
+			temp = ptrCheck;
+			ptrCheck->prev = ptrNext;
+			ptrCheck->next = ptrNext->next;
+			ptrNext->prev = temp->prev;
+			ptrNext->next = temp;
+		}
+		if ( ptrCheck->next == NULL ) return;
+		ptrNext = ptrCheck->next;
+	}
+	return;
 }
 
 void Start_Timer(INT32 Time) {
@@ -560,5 +589,11 @@ void Start_Timer(INT32 Time) {
 	MEM_WRITE( Z502TimerStart, &Time );
 	MEM_READ( Z502TimerStatus, &Status );
 	ZCALL( Z502_IDLE() );
+}
+
+INT32 get_currentTime() {
+	INT32 	currenttime;
+	ZCALL( MEM_READ( Z502ClockStatus, &currenttime ) );
+	return currenttime;
 }
 
