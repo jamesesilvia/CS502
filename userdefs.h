@@ -44,10 +44,11 @@ INT32 	pid_Bounce( PCB_t **ptrFirst, INT32 id_check);
 INT32 	check_name ( PCB_t **ptrFirst, char *name );
 INT32 	get_PCB_ID( PCB_t **ptrFirst, char *name, INT32 *process_ID, INT32 *error );
 INT32 	get_first_ID ( PCB_t ** ptrFirst );
+PCB_t 	*get_firstPCB(PCB_t ** ptrFirst);
 void 	terminate_Process( INT32 process_ID, INT32 *error );
 void 	rm_children ( PCB_t **ptrFirst, INT32 process_ID );
 void 	print_queues ( PCB_t **ptrFirst );
-INT32 get_currentTime();
+INT32 	get_currentTime();
 
 extern 		PCB_t 			*created_PCB;
 extern 		INT32 			inc_pid;

@@ -13,9 +13,10 @@ Test1b
 
 Progress:
 Test1c
-	- Added sorting algorithms
-	- Need to further explore switch context
+	- Need to GetLocks working
+	- switch or make in OSCreate process?
+	- Bug in timerList queues
 
 Build Status:
-Compiled Successfully
+Compile Successfully
 
