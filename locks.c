@@ -12,30 +12,33 @@
 
 #include             "userdefs.h"
 
-extern volatile 	timer_lock;
-extern volatile 	ready_lock;
+#define                  DO_LOCK                     1
+#define                  DO_UNLOCK                   0
+#define                  SUSPEND_UNTIL_LOCKED        TRUE
+#define                  DO_NOT_SUSPEND              FALSE
 
 void lockTimer( void );
 void unlockTimer( void );
 void lockReady( void );
 void unlockReady ( void );
 
-
 //Timer Locks
 void lockTimer( void ){
-	while(timer_lock) {}
-	timer_lock = 1;
+	INT32 LockResult;
+	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE, DO_LOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
 void unlockTimer ( void ){
-	timer_lock = 0;
+	INT32 LockResult;
+	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
 
 //Ready Locks
 void lockReady ( void ){
-	while(ready_lock) {}
-	ready_lock = 1;
+	INT32 LockResult;
+	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 1, DO_LOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
 void unlockReady ( void ){
-	ready_lock = 0;
+	INT32 LockResult;
+	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 1, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
 

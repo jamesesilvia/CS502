@@ -32,12 +32,17 @@ typedef         struct {
 
 INT32	OS_Create_Process( char *name, void *procPTR, INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
 void	Start_Timer( INT32 Time );
-void 	make_switch_context( PCB_t * PCB, void *procPTR);
 void 	make_context( PCB_t * PCB, void *procPTR);
-void 	switch_context( PCB_t * PCB );
-void 	switch_save_context ( PCB_t * PCB );
-INT32 	add_to_Queue( PCB_t **ptrFirst, PCB_t * entry, INT32 listFlag );
-INT32 	rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id, INT32 listFlag );
+void 	make_switch_Savecontext( PCB_t * PCB, void *procPTR);
+void 	make_switch_Killcontext( PCB_t * PCB, void *procPTR);
+void 	switch_Killcontext( PCB_t * PCB );
+void 	switch_Savecontext ( PCB_t * PCB );
+void 	add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry );
+void 	add_to_timerQueue ( PCB_t **ptrFirst, PCB_t *entry );
+INT32 	add_to_Queue( PCB_t **ptrFirst, PCB_t * entry);
+INT32 	rm_from_readyQueue ( PCB_t **ptrFirst, INT32 remove_id );
+void 	rm_from_timerQueue ( PCB_t **ptrFirst, INT32 remove_id );
+PCB_t 	*rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id );
 void 	priority_sort( PCB_t ** ptrFirst );
 void 	timer_sort( PCB_t ** ptrFirst );
 INT32 	pid_Bounce( PCB_t **ptrFirst, INT32 id_check);
@@ -50,6 +55,8 @@ void 	rm_children ( PCB_t **ptrFirst, INT32 process_ID );
 void 	print_queues ( PCB_t **ptrFirst );
 INT32 	get_currentTime();
 
-extern 		PCB_t 			*created_PCB;
+extern 		PCB_t 			*current_PCB;
+extern		PCB_t			*pidList;
+extern		PCB_t			*timerList;
 extern 		INT32 			inc_pid;
 extern		INT32			total_pid;
