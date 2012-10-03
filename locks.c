@@ -31,7 +31,6 @@ void unlockTimer ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
-
 //Ready Locks
 void lockReady ( void ){
 	INT32 LockResult;
@@ -40,5 +39,15 @@ void lockReady ( void ){
 void unlockReady ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 1, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
+}
+//Both Locks
+void lockBoth ( void ){
+	lockTimer();
+	lockReady();
+}
+void unlockBoth ( void ){
+	unlockTimer();
+	unlockReady();
+
 }
 

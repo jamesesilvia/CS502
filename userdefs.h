@@ -10,8 +10,6 @@
 #define			HALTED_STATE			94
 
 #define			TIMER					4
-#define			PID_Q					1
-#define			TIMER_Q					0
 #define			MAX_PIDs				100
 #define			MAX_NAME				16
 
@@ -27,7 +25,6 @@ typedef         struct {
 	void					*context;
 	void					*next;
 	void					*prev;
-
     }PCB_t;
 
 INT32	OS_Create_Process( char *name, void *procPTR, INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
@@ -40,7 +37,7 @@ void 	switch_Savecontext ( PCB_t * PCB );
 void 	add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry );
 void 	add_to_timerQueue ( PCB_t **ptrFirst, PCB_t *entry );
 INT32 	add_to_Queue( PCB_t **ptrFirst, PCB_t * entry);
-INT32 	rm_from_readyQueue ( PCB_t **ptrFirst, INT32 remove_id );
+INT32 	rm_from_readyQueue ( INT32 remove_id );
 void 	rm_from_timerQueue ( PCB_t **ptrFirst, INT32 remove_id );
 PCB_t 	*rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id );
 void 	priority_sort( PCB_t ** ptrFirst );

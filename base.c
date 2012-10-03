@@ -96,7 +96,7 @@ void    interrupt_handler( void ) {
 
     		while( Check->p_time >= checkTime ){
     			printf("MADE IT");
-    			CALL( timerQueue_to_ReadyQueue ( Check->p_id ) );
+    			CALL( timerQueue_to_readyQueue ( Check->p_id ) );
 
 //    			CALL( priority_sort(&pidList) );
 
@@ -257,13 +257,14 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	memset(PCB->p_name, 0, MAX_NAME+1);
 	strcpy(PCB->p_name,name);
 	PCB->p_priority = priority;
+	PCB->next = NULL;
 	
 	if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
 	
 	//Add to Main List
 	CALL( add_to_readyQueue(&pidList, PCB) );
 //	CALL( priority_sort(&pidList) );
-	CALL( print_queues(&pidList) );
+//	CALL( print_queues(&pidList) );
 
 	(*error) = ERR_SUCCESS;
 	(*pid) = PCB->p_id;
@@ -287,6 +288,7 @@ void    svc( void ) {
     static INT16        do_print = 10;
     INT32				Time;
     INT32 				sleepTime;
+    PCB_t				*temp;
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print > 0 ) {
@@ -311,16 +313,21 @@ void    svc( void ) {
     	//Sleep
     	case SYSNUM_SLEEP:
     		sleepTime = Z502_ARG1.VAL;
-    		current_PCB->p_time = (sleepTime + get_currentTime() );
+    		current_PCB->p_time = ( sleepTime + get_currentTime() );
+//    		CALL( add_to_timerQueue(&timerList, current_PCB) );
+//    		print_queues(&timerList);
 
-    		CALL( add_to_timerQueue( &timerList, current_PCB  ) );
+    		CALL( readyQueue_to_timerQueue( current_PCB->p_id  ) );
+//    		CALL( rm_from_readyQueue( &pidList, current_PCB->p_id) );
 //    		CALL( timer_sort( &timerList ) );
 
     		//Based on sorted Timer
     		//Start Timer on first p_time-current time
-    		CALL( Start_Timer( timerList->p_time - get_currentTime() ) );
+//    		CALL( Start_Timer( timerList->p_time - get_currentTime() ) );
 //   		CALL( Start_Timer(sleepTime) );
 
+    		CALL( temp = get_firstPCB(&pidList) );
+    		printf("TEMP CONTEXTT NAME %d", temp->p_name);
 //    		CALL( switch_Savecontext(get_firstPCB(&pidList)) );
     		break;
 
@@ -343,11 +350,13 @@ void    svc( void ) {
 
 void terminate_Process ( INT32 process_ID, INT32 *error ){
 
+	if (total_pid <= 0) ZCALL( Z502_HALT() );
+
 	//if pid is -1; terminate self
 	if ( process_ID == -1 ){
 		//printf("\nTerminate self\n");
 
-		if (rm_from_readyQueue(&pidList, current_PCB->p_id ))
+		if (rm_from_readyQueue( current_PCB->p_id ))
 			(*error) = ERR_SUCCESS;
 		else 	(*error) = ERR_BAD_PARAM;
 
@@ -361,7 +370,7 @@ void terminate_Process ( INT32 process_ID, INT32 *error ){
 		//printf("\nTerminate self and children\n");
 		rm_children(&pidList, current_PCB->p_id);
 		
-		if (rm_from_readyQueue(&pidList, current_PCB->p_id ))
+		if (rm_from_readyQueue( current_PCB->p_id ))
 			(*error) = ERR_SUCCESS;
 		else 	(*error) = ERR_BAD_PARAM;
 
@@ -372,7 +381,7 @@ void terminate_Process ( INT32 process_ID, INT32 *error ){
 	}
 	//remove pid from pidList
 	else{
-		if (rm_from_readyQueue(&pidList, process_ID ))
+		if (rm_from_readyQueue( process_ID ))
 			(*error) = ERR_SUCCESS;
 		else	(*error) = ERR_BAD_PARAM;
 
@@ -386,7 +395,8 @@ void rm_children ( PCB_t ** ptrFirst, INT32 process_ID ){
 	PCB_t * ptrCheck = *ptrFirst;
 	while (ptrCheck != NULL){
 		if ( ptrCheck->p_parent == process_ID ){
-			rm_from_readyQueue(&pidList, ptrCheck->p_id );
+			printf("ptrCheck Parent Name %s\n", ptrCheck->p_name);
+			rm_from_readyQueue( ptrCheck->p_id );
 		}
 		ptrCheck = ptrCheck->next;
 	}
