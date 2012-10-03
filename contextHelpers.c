@@ -25,5 +25,6 @@ void switch_Killcontext ( PCB_t * PCB ){
 }
 void switch_Savecontext ( PCB_t * PCB ){
 	current_PCB = PCB;
+	printf("SWITCH TO PROCESS: %s", PCB->p_name);
 	ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_SAVE_MODE, &PCB->context ));
 }
