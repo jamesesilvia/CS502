@@ -48,7 +48,9 @@ void 	wait_to_Ready ( INT32 remove_id );
 PCB_t 	*ready_to_Wait ( INT32 remove_id );
 //Sort Queues
 void 	timer_sort( void );
-void 	priority_sort( PCB_t ** ptrFirst );
+void 	timerSwap( PCB_t *Prev, PCB_t *Curr );
+void 	ready_sort( void );
+void 	readySwap( PCB_t *Prev, PCB_t *Curr );
 //Queue Helpers
 INT32 	pid_Bounce( PCB_t **ptrFirst, INT32 id_check);
 INT32 	check_name ( PCB_t **ptrFirst, char *name );
