@@ -94,9 +94,9 @@ void    interrupt_handler( void ) {
 			CALL( currentTime = get_currentTime() );
 			//Wake up all WAITING items that are before currentTime
 			CALL( wokenUp = wake_timerList(currentTime) );
-
+			//Get sleeptime
 			CALL( sleeptime = checkTimer (currentTime) );
-			CALL( switchPCB = get_readyPCB() );
+
 			//New processes are Ready
 			if( sleeptime > 0){
 				if (wokenUp > 0){
@@ -111,45 +111,15 @@ void    interrupt_handler( void ) {
 						CALL( switch_Savecontext( switchPCB ) );
 					}
 				}
-				//Same Process, restart Timer
+				//No new processes wokenUp
 				else{
 					CALL( Start_Timer(sleeptime) );
 					MEM_WRITE(Z502InterruptClear, &Index );
-
 				}
 			}
 			else{
 				MEM_WRITE(Z502InterruptClear, &Index );
 			}
-//    		CALL( Check = get_firstPCB(&timerList) );    		
-//    		if (Check == NULL) return;
-//			printf("\nCheck p_time %d Checktime %d\n", Check->p_time, checkTime);
-
-//    		while( Check->p_time <= checkTime ){
-//  			printf("MADE IT");
-//    			CALL( timerQueue_to_readyQueue ( Check->p_id ) );
-//    			CALL( priority_sort(&pidList) );
-
-//    			CALL( lockTimer() );
-//    			CALL( Check = get_firstPCB(&timerList) );
-//    			CALL( unlockTimer() );
-
-//    			CALL( print_queues(&timerList) );
-//    			if (Check == NULL) break;
-//    		}
-
-
-//    		CALL( lockTimer() );
-//    		CALL( lockReady() );
-//    		CALL( add_to_readyQueue(&pidList, get_firstPCB(&timerList)) );
-//    		CALL( success = rm_from_Queue(&timerList, timerList->p_id, TIMER_Q ) );
-//    		CALL( unlockTimer() );
-//    		if ( success ) printf("Successfully removed ID");
-//
-//    		CALL( priority_sort(&pidList) );
-//    		CALL( unlockReady() );
-
-			// Clear out this device - we're done with it
 
     		break;
     }
