@@ -159,6 +159,22 @@ void wait_to_Ready ( INT32 remove_id ){
 	//No ID in PCB List
 	return;
 }
+void ready_to_Running ( void ){
+	ZCALL( lockReady() );
+	PCB_t * ptrDel = pidList;
+
+	while ( ptrDel != NULL ){
+		if (ptrDel->p_id == current_PCB->p_id){
+			ptrDel->p_state = RUNNING_STATE;
+		}
+		else if (ptrDel->p_state == RUNNING_STATE){
+			ptrDel->p_state = READY_STATE;
+		}
+		ptrDel = ptrDel->next;;
+	}
+	ZCALL( unlockReady() );
+	return;
+}
 
 INT32 check_name( PCB_t **ptrFirst, char *name ){
 	ZCALL( lockReady() );
@@ -283,33 +299,6 @@ INT32 checkTimer ( INT32 currentTime ){
 	//New sleeptime for Timer
 	unlockTimer();
 	return (ptrCheck->p_time - currentTime + 10);
-}
-//Debug
-void printTimer ( void ){
-	PCB_t * ptrCheck = timerList;
-	while (ptrCheck != NULL){
-		printf("------------------------------\n");
-		printf("Name: %s\t", ptrCheck->p_name);
-		printf("ID: %d\t", ptrCheck->p_id);
-		printf("Time: %d\t", ptrCheck->p_time);
-		printf("Priority: %d\t", ptrCheck->p_priority);
-		printf("State: %d\n", ptrCheck->p_state);
-		ptrCheck = ptrCheck->next;
-	}
-	return;
-}
-void printReady ( void ){
-	PCB_t * ptrCheck = pidList;
-	while (ptrCheck != NULL){
-		printf("------------------------------\n");
-		printf("Name: %s\t", ptrCheck->p_name);
-		printf("ID: %d\t", ptrCheck->p_id);
-		printf("Time: %d\t", ptrCheck->p_time);
-		printf("Priority: %d\t", ptrCheck->p_priority);
-		printf("State: %d\n", ptrCheck->p_state);
-		ptrCheck = ptrCheck->next;
-	}
-	return;
 }
 
 

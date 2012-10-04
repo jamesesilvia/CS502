@@ -343,6 +343,10 @@ void    svc( void ) {
     		CALL( get_PCB_ID(&pidList, (char *)Z502_ARG1.PTR,
     				(INT32 *)Z502_ARG2.PTR, (INT32 *)Z502_ARG3.PTR) );
     		break;
+    	//Suspend Process
+    	case SYSNUM_SUSPEND_PROCESS:
+    		break;
+    	case SYSNUM_RESUME_PROCESS:
 		default:
     		printf("ERROR! call_type not recognized!\n");
     		printf("Entered Call_Type is %i\n", call_type);

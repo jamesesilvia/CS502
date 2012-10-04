@@ -45,6 +45,7 @@ void 	rm_from_timerQueue ( PCB_t **ptrFirst, INT32 remove_id );
 PCB_t 	*rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id );
 //Move Queues
 void 	wait_to_Ready ( INT32 remove_id );
+void	ready_to_Running ( void );
 PCB_t 	*ready_to_Wait ( INT32 remove_id );
 //Sort Queues
 void 	timer_sort( void );
