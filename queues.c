@@ -53,7 +53,7 @@ INT32 rm_from_readyQueue ( INT32 remove_id ){
 	total_pid--;
 	lockReady();
 
-	printf("REMOVED ID %d FROM READY", remove_id);
+//	printf("REMOVED ID %d FROM READY", remove_id);
 	temp = rm_from_Queue(&pidList, remove_id);
 	if (temp == NULL){
 //		printf("RETURNED NULL IN REMOVE READY");
@@ -139,10 +139,8 @@ void readyQueue_to_timerQueue( INT32 remove_id ){
 	unlockReady();
 	
 	if (temp != NULL){	
-		lockTimer();
 		add_to_timerQueue(&timerList, temp);
 //		print_queues(&timerList);
-		unlockTimer();
 	}
 }
 void timerQueue_to_readyQueue( INT32 remove_id ){
@@ -286,7 +284,7 @@ PCB_t * get_readyPCB( void ){
 	return NULL;
 }
 INT32 wake_timerList ( INT32 currentTime ){
-	print_queues(&timerList);
+//	print_queues(&timerList);
 	lockTimer();
 	PCB_t *ptrCheck = timerList;
 	PCB_t *ptrPrev = NULL;
@@ -304,9 +302,32 @@ INT32 wake_timerList ( INT32 currentTime ){
 		}
 		ptrCheck = ptrCheck->prev;
 	}
+	timer_sort();
 	unlockTimer();
-	CALL( printf("WOKE UP %d\n", count) );
+//	CALL( printf("WOKE UP %d\n", count) );
 	return count;
+}
+
+INT32 checkTimer ( INT32 currentTime ){
+	lockTimer();
+
+	PCB_t *ptrCheck = timerList;
+	PCB_t *ptrPrev = NULL;
+	//No more items on timerList
+	if (ptrCheck == NULL){
+		unlockTimer();
+		return -1;
+	}
+
+//	//Set ptrCheck to first ready to pop
+//	while (ptrCheck != NULL){
+//		ptrPrev = ptrCheck;
+//		ptrCheck = ptrCheck->next;
+//	}
+//	ptrCheck = ptrPrev;
+	//New sleeptime for Timer
+	unlockTimer();
+	return (ptrCheck->p_time - currentTime + 10);
 }
 
 void priority_sort( PCB_t ** ptrFirst ){
@@ -332,47 +353,30 @@ void priority_sort( PCB_t ** ptrFirst ){
 }
 
 void timer_sort( void ){
-	PCB_t * ptrCheck = timerList;
-	PCB_t * ptrNext = NULL;
-	PCB_t * temp = NULL;
+	PCB_t * ptrDown = timerList;
+	PCB_t * ptrUp = NULL;
 
-//	for (; ptrCheck->next != NULL; ptrCheck = ptrCheck->next ){
-//		for (ptrNext = ptrCheck->next; ptrNext != NULL; ptrNext = ptrNext->next){
+	PCB_t *temp = (PCB_t *)(malloc(sizeof(PCB_t)));
+
+	if ( ptrDown->next == NULL ) return;
+
+	ptrUp = ptrDown->next;
+
+	while ( ptrUp != NULL ){
+		if ( ptrDown->p_time > ptrUp->p_time ){
 //			printf("STUCK%d %d",ptrCheck->p_id, ptrNext->p_id);
-//			if ( ptrCheck->p_time >= ptrNext->p_time ){
-////				printf("\nptrNext->next ID\n %d", ptrNext->p_id);
-////				Z502_HALT();
-//				temp = ptrCheck;
-//				ptrCheck->prev = ptrNext;
-//				ptrCheck->next = ptrNext->next;
-//				ptrNext->prev = temp->prev;
-//				ptrNext->next = temp;
-//			}
-//
-//		}
-//	}
-//	return;
-
-	if ( ptrCheck->next == NULL ) return;
-
-	 ptrNext = ptrCheck->next;
-
-	while ( ptrNext != NULL ){
-		if ( ptrCheck->p_time < ptrNext->p_time ){
-//			printf("STUCK%d %d",ptrCheck->p_id, ptrNext->p_id);
-			temp = ptrCheck;
-			ptrCheck->prev = ptrNext;
-			ptrCheck->next = ptrNext->next;
-			ptrNext->prev = temp->prev;
-			ptrNext->next = temp;
+			memcpy(temp, ptrDown, sizeof(PCB_t));
+			ptrDown->prev = ptrUp;
+			ptrDown->next = ptrUp->next;
+			ptrUp->prev = temp->prev;
+			ptrUp->next = ptrDown;
 		}
-		ptrCheck = ptrNext;
-		ptrNext = ptrCheck->next;	
+		ptrDown = ptrUp;
+		ptrUp = ptrUp->next;
 	}
 	return;
 }
 void print_queues ( PCB_t **ptrFirst ){
-	lockBoth();
 	if (*ptrFirst == NULL) return;
 	PCB_t * ptrCheck = *ptrFirst;
 	while (ptrCheck != NULL){
@@ -384,7 +388,6 @@ void print_queues ( PCB_t **ptrFirst ){
 		printf("State: %d\n", ptrCheck->p_state);
 		ptrCheck = ptrCheck->next;
 	}
-	unlockBoth();
 	return;
 }
 

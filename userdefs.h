@@ -53,6 +53,7 @@ void 	terminate_Process( INT32 process_ID, INT32 *error );
 void 	rm_children ( PCB_t **ptrFirst, INT32 process_ID );
 void 	print_queues ( PCB_t **ptrFirst );
 INT32 	get_currentTime();
+INT32 	checkTimer ( INT32 currentTime );
 
 INT32 	wake_timerList ( INT32 currentTime );
 
