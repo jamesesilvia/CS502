@@ -220,6 +220,8 @@ void    os_init( void )
     	procPTR = test1c;
 	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1d" ) == 0 ) )
     	procPTR = test1d;
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1e" ) == 0 ) )
+	    procPTR = test1e;
     else
     	procPTR = test1c;
 	
@@ -345,70 +347,17 @@ void    svc( void ) {
     		break;
     	//Suspend Process
     	case SYSNUM_SUSPEND_PROCESS:
+    		CALL( suspend_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
     		break;
     	case SYSNUM_RESUME_PROCESS:
+    		CALL( resume_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
+    		break;
 		default:
     		printf("ERROR! call_type not recognized!\n");
     		printf("Entered Call_Type is %i\n", call_type);
     		break;
     }											// End of switch call_type
 }                                               // End of svc
-
-void terminate_Process ( INT32 process_ID, INT32 *error ){
-
-	INT32	status;
-	if (total_pid <= 0) ZCALL( Z502_HALT() );
-
-	//if pid is -1; terminate self
-	if ( process_ID == -1 ){
-		//printf("\nTerminate self\n");
-		
-		CALL( status = rm_from_readyQueue(current_PCB->p_id) );
-		if (status) (*error) = ERR_SUCCESS;
-		else (*error) = ERR_BAD_PARAM;
-
-		if (total_pid > 0){
-			CALL( switch_Savecontext(get_readyPCB()) );
-		}
-		else CALL ( Z502_HALT() );
-	}	
-	//if pid -2; terminate self and any child
-	else if ( process_ID == -2 ){
-		//printf("\nTerminate self and children\n");
-		CALL( rm_children(&pidList, current_PCB->p_id) );
-		
-		CALL( status = rm_from_readyQueue(current_PCB->p_id) );
-		if (status) (*error) = ERR_SUCCESS;
-		else 	(*error) = ERR_BAD_PARAM;
-
-		if (total_pid > 0){
-			CALL( switch_Savecontext(get_readyPCB()) );
-		}
-		else ZCALL( Z502_HALT() );
-	}
-	//remove pid from pidList
-	else{
-		CALL( status = rm_from_readyQueue(process_ID) );
-		if (status)
-			(*error) = ERR_SUCCESS;
-		else	(*error) = ERR_BAD_PARAM;
-
-		if (total_pid <= 0){
-			ZCALL ( Z502_HALT() );
-		}
-	}
-}
-//Helper function for terminate process
-void rm_children ( PCB_t ** ptrFirst, INT32 process_ID ){
-	PCB_t * ptrCheck = *ptrFirst;
-	while (ptrCheck != NULL){
-		if ( ptrCheck->p_parent == process_ID ){
-//			printf("ptrCheck Parent Name %s\n", ptrCheck->p_name);
-			CALL( rm_from_readyQueue( ptrCheck->p_id ) );
-		}
-		ptrCheck = ptrCheck->next;
-	}
-}
 
 void Start_Timer(INT32 Time) {	
 	INT32		Status;

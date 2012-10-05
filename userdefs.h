@@ -7,7 +7,9 @@
 #define			READY_STATE				91
 #define			RUNNING_STATE			92
 #define			WAITING_STATE			93
-#define			HALTED_STATE			94
+#define			SUSPENDED_STATE			94
+//Not currently Used
+#define			HALTED_STATE			95
 
 #define			MAX_PIDs				100
 #define			MAX_NAME				16
@@ -44,6 +46,9 @@ INT32 	rm_from_readyQueue ( INT32 remove_id );
 void 	rm_from_timerQueue ( PCB_t **ptrFirst, INT32 remove_id );
 PCB_t 	*rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id );
 //Move Queues
+void 	timerQueue_to_readyQueue( INT32 remove_id );
+void 	readyQueue_to_timerQueue( INT32 remove_id );
+//Change States
 void 	wait_to_Ready ( INT32 remove_id );
 void	ready_to_Running ( void );
 PCB_t 	*ready_to_Wait ( INT32 remove_id );
@@ -60,9 +65,11 @@ INT32 	get_first_ID ( PCB_t ** ptrFirst );
 //Get PCB
 PCB_t 	*get_firstPCB(PCB_t ** ptrFirst);
 PCB_t 	*get_readyPCB( void );
-//Terminate Processes
+//Process Handle
 void 	terminate_Process( INT32 process_ID, INT32 *error );
 void 	rm_children ( PCB_t **ptrFirst, INT32 process_ID );
+void 	suspend_Process ( INT32 process_ID, INT32 *error );
+void 	resume_Process ( INT32 process_ID, INT32 *error );
 //Timer Functions
 INT32 	get_currentTime();
 INT32 	checkTimer ( INT32 currentTime );

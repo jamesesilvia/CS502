@@ -48,7 +48,6 @@ INT32 add_to_Queue( PCB_t **ptrFirst, PCB_t * entry ){
 INT32 rm_from_readyQueue ( INT32 remove_id ){
 	PCB_t *temp;
 	total_pid--;
-	CALL( printf("TOTAL PIDS REMAINING %d\n\n", total_pid) );
 	ZCALL( lockReady() );
 
 //	printf("REMOVED ID %d FROM READY", remove_id);
@@ -98,7 +97,7 @@ PCB_t *rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id ){
 			}
 		}
 		ptrPrev = ptrDel;
-		ptrDel = ptrDel->next;;
+		ptrDel = ptrDel->next;
 	}
 	//No ID in PCB List
 	return NULL;
@@ -140,7 +139,7 @@ PCB_t *ready_to_Wait ( INT32 remove_id ){
 			temp = ptrDel;
 			return temp;
 		}
-		ptrDel = ptrDel->next;;
+		ptrDel = ptrDel->next;
 	}
 	//No ID in PCB List
 	return NULL;
@@ -154,7 +153,7 @@ void wait_to_Ready ( INT32 remove_id ){
 //			printf("\nCHANGE STATE %d NAME %s\n", ptrDel->p_state, ptrDel->p_name);
 			return;
 		}
-		ptrDel = ptrDel->next;;
+		ptrDel = ptrDel->next;
 	}
 	//No ID in PCB List
 	return;
@@ -170,7 +169,7 @@ void ready_to_Running ( void ){
 		else if (ptrDel->p_state == RUNNING_STATE){
 			ptrDel->p_state = READY_STATE;
 		}
-		ptrDel = ptrDel->next;;
+		ptrDel = ptrDel->next;
 	}
 	ZCALL( unlockReady() );
 	return;
