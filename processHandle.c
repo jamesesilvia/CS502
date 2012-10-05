@@ -20,7 +20,6 @@ void terminate_Process ( INT32 process_ID, INT32 *error ){
 		CALL( status = rm_from_readyQueue(current_PCB->p_id) );
 		if (status) (*error) = ERR_SUCCESS;
 		else (*error) = ERR_BAD_PARAM;
-		CALL( printf("TOTAL PIDS REMAINING %d\n\n", total_pid) );
 		if (total_pid > 0){
 			CALL( switchPCB = get_readyPCB() );
 			if (switchPCB == NULL) ZCALL( Z502_IDLE() );
@@ -36,7 +35,6 @@ void terminate_Process ( INT32 process_ID, INT32 *error ){
 		CALL( status = rm_from_readyQueue(current_PCB->p_id) );
 		if (status) (*error) = ERR_SUCCESS;
 		else 	(*error) = ERR_BAD_PARAM;
-		CALL( printf("TOTAL PIDS REMAINING %d\n\n", total_pid) );
 		if (total_pid > 0){
 			CALL( switchPCB = get_readyPCB() );
 			if (switchPCB == NULL) ZCALL( Z502_IDLE() );
@@ -96,7 +94,6 @@ INT32 ready_to_Suspend ( INT32 process_ID ){
 	while ( ptrCheck != NULL ){
 		if (ptrCheck->p_id == process_ID){
 			ptrCheck->p_state = SUSPENDED_STATE;
-			total_pid--;
 			ZCALL( unlockReady() );
 			return 1;
 		}
@@ -114,7 +111,6 @@ void resume_Process ( INT32 process_ID, INT32 *error ){
 		if (ptrCheck->p_id == process_ID){
 			if (ptrCheck->p_state == SUSPENDED_STATE){
 				ptrCheck->p_state = READY_STATE;
-				total_pid++;
 				ZCALL( unlockReady() );
 				(*error) = ERR_SUCCESS;
 				return;
