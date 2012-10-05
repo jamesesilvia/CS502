@@ -222,7 +222,9 @@ void    os_init( void )
     	procPTR = test1d;
 	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1e" ) == 0 ) )
 	    procPTR = test1e;
-    else
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1f" ) == 0 ) )
+	    procPTR = test1f;
+	else
     	procPTR = test1c;
 	
     CALL( OS_Create_Process(CALLING_ARGV[1], procPTR, 0, &i, &i, 1) );
