@@ -85,5 +85,13 @@ void UNLOCKALL( void ){
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 8, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 9, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
+//Ensure ISR does not interfere with SVC
+void lockISR ( void ){
+	while (ISR) {}
+	ISR = 1;
+}
+void unlockISR ( void ){
+	ISR = 0;
+}
 
 

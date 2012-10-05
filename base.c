@@ -63,8 +63,7 @@ char                 *call_names[] = { "mem_read ", "mem_write",
 INT32	 			inc_pid = 0;
 INT32				total_pid = 0;
 
-volatile 			timer_lock = 0;
-volatile 			ready_lock = 0;
+volatile 			ISR = 0;
 
 /************************************************************************
     INTERRUPT_HANDLER
@@ -81,6 +80,8 @@ void    interrupt_handler( void ) {
 	INT32			   wokenUp;
 	INT32			   sleeptime;
 
+	lockISR();
+	
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id );
     // Set this device as target of our query
@@ -88,7 +89,7 @@ void    interrupt_handler( void ) {
     // Now read the status of this device
     MEM_READ(Z502InterruptStatus, &Status );
 	
-	if (Status == ERR_BAD_PARAM){
+	if (Status == ERR_BAD_PARAM || Status == ERR_BAD_DEVICE_ID){
 		ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
 		return;
 	}
@@ -129,6 +130,7 @@ void    interrupt_handler( void ) {
 					break;
 				}	
 		}
+		unlockISR();
 		return;
     }
 }                                       /* End of interrupt_handler */
@@ -226,6 +228,10 @@ void    os_init( void )
 	    procPTR = test1f;
 	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1g" ) == 0 ) )
 		procPTR = test1g;
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1h" ) == 0 ) )
+		procPTR = test1h;
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1i" ) == 0 ) )
+		procPTR = test1i;
 	else
     	procPTR = test1c;
 	
@@ -234,10 +240,6 @@ void    os_init( void )
 
 INT32	OS_Create_Process( char * name, void * procPTR,
 		INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH){
-
-	printf("\n\nTOTAL PIDs %d\n\n", total_pid);
-
-	inc_pid++;
 
 	if (priority < 0){
 		printf("BAD PRIORITY");
@@ -257,7 +259,7 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 		(*error) = ERR_BAD_PARAM;
 		return -1;
 	}	
-
+	inc_pid++;
     PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
 	PCB->p_state = NEW_STATE;
 	PCB->p_id = inc_pid;
@@ -275,7 +277,7 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	CALL( add_to_readyQueue(&pidList, PCB) );
 //	CALL( priority_sort(&pidList) );
 //	CALL( print_queues(&pidList) );
-
+	
 	(*error) = ERR_SUCCESS;
 	(*pid) = PCB->p_id;
 	
@@ -312,6 +314,7 @@ void    svc( void ) {
     }
     //Test0 from slides
     switch (call_type){
+		lockISR();
     	//Get time of day
     	case SYSNUM_GET_TIME_OF_DAY:
     		ZCALL(MEM_READ(Z502ClockStatus, &Time));
@@ -332,7 +335,7 @@ void    svc( void ) {
 
     		//Sleep
     		CALL( sleepTime = checkTimer(currentTime) );
-    		CALL( Start_Timer( sleepTime ) );
+			if (sleepTime > 0) CALL( Start_Timer( sleepTime ) );
 			
 			CALL( switchPCB = get_readyPCB() );
 			if (switchPCB == NULL) ZCALL( Z502_IDLE() );
@@ -365,6 +368,7 @@ void    svc( void ) {
     		printf("Entered Call_Type is %i\n", call_type);
     		break;
     }											// End of switch call_type
+	unlockISR();
 }                                               // End of svc
 
 INT32 check_name( PCB_t **ptrFirst, char *name ){
@@ -385,17 +389,17 @@ INT32 check_name( PCB_t **ptrFirst, char *name ){
 
 void Start_Timer(INT32 Time) {	
 	INT32		Status;
-//	ZCALL ( HW_lock() );
+	ZCALL ( HW_lock() );
 	ZCALL( MEM_WRITE( Z502TimerStart, &Time ) );
 	ZCALL( MEM_READ( Z502TimerStatus, &Status ) );
-//	ZCALL ( HW_unlock() );
+	ZCALL ( HW_unlock() );
 }
 
 INT32 get_currentTime() {
 	INT32 	currentTime;
-//	ZCALL ( HW_lock() );
+	ZCALL ( HW_lock() );
 	ZCALL( MEM_READ( Z502ClockStatus, &currentTime ) );
-//	ZCALL ( HW_unlock() );
+	ZCALL ( HW_unlock() );
 	return currentTime;
 }
 

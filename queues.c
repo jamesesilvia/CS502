@@ -52,7 +52,8 @@ INT32 rm_from_readyQueue ( INT32 remove_id ){
 
 //	printf("REMOVED ID %d FROM READY", remove_id);
 	CALL( temp = rm_from_Queue(&pidList, remove_id) );
-	if (temp == NULL){
+	if ( (temp == NULL) && (total_pid != 0) ){
+		total_pid++;
 		ZCALL( unlockReady() );
 		return -1;
 	}
@@ -203,7 +204,6 @@ INT32 checkTimer ( INT32 currentTime ){
 	ZCALL( lockTimer() );
 
 	PCB_t *ptrCheck = timerList;
-	PCB_t *ptrPrev = NULL;
 	//No more items on timerList
 	if (ptrCheck == NULL){
 		ZCALL( unlockTimer() );
@@ -211,7 +211,7 @@ INT32 checkTimer ( INT32 currentTime ){
 	}
 	//New sleeptime for Timer
 	unlockTimer();
-	return (ptrCheck->p_time - currentTime + 10);
+	return (ptrCheck->p_time - get_currentTime() + 500);
 }
 
 

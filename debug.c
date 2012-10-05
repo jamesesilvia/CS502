@@ -30,5 +30,6 @@ void printReady ( void ){
 		printf("State: %d\n", ptrCheck->p_state);
 		ptrCheck = ptrCheck->next;
 	}
+	printf("\n");
 	return;
 }

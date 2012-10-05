@@ -34,15 +34,15 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 	}
 	ZCALL( lockReady() );
 	CALL( ready_sort() );
+//	printReady();
 	ZCALL( unlockReady() );
 
 	//GET READY PCB TO RUN
 	CALL( switchPCB = get_readyPCB() );
-	if (switchPCB == NULL) ZCALL( Z502_IDLE() );
-	if (switchPCB->p_id == current_PCB->p_id) return;
+	if (switchPCB == NULL) Z502_IDLE();
+	else if (switchPCB->p_id == current_PCB->p_id) return;
 	if (switchPCB != NULL) CALL( switch_Savecontext(switchPCB) );
 }
-
 INT32 updatePriority ( INT32 process_ID, INT32 new_priority ){
 	ZCALL( lockReady() );
 	PCB_t *ptrCheck = pidList;
@@ -58,7 +58,6 @@ INT32 updatePriority ( INT32 process_ID, INT32 new_priority ){
 	ZCALL( unlockReady() );
 	return -1;
 }
-
 /*
  * Change States of PCB
  */

@@ -86,3 +86,4 @@ extern		PCB_t			*pidList;
 extern		PCB_t			*timerList;
 extern 		INT32 			inc_pid;
 extern		INT32			total_pid;
+extern		volatile 		INT32			ISR;
