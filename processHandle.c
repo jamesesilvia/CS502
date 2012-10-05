@@ -5,8 +5,37 @@
 
 #include			"userdefs.h"
 
+/*
+ * GET PROCESS ID
+ */
+INT32 get_PCB_ID(PCB_t ** ptrFirst, char *name, INT32 *process_ID, INT32 *error){
+	ZCALL( lockReady() );
+//	printf("GET PCB ID %s\n", name);
 
-//TERMINATE PROCESS
+	if (strcmp("", name) == 0){
+		(*process_ID) = current_PCB->p_id;
+		(*error) = ERR_SUCCESS;
+		ZCALL( unlockReady() );
+		return 0;
+	}
+	PCB_t *ptrCheck = *ptrFirst;
+	while (ptrCheck != NULL){
+		if (strcmp(ptrCheck->p_name, name) == 0){
+			(*process_ID) = ptrCheck->p_id;
+			(*error) = ERR_SUCCESS;
+			ZCALL( unlockReady() );
+			return 0;
+		}
+		ptrCheck = ptrCheck->next;
+	}
+	(*error) = ERR_BAD_PARAM;
+	ZCALL( unlockReady() );
+	return -1;
+}
+
+/*
+ * TERMINATE PROCESS
+ */
 void terminate_Process ( INT32 process_ID, INT32 *error ){
 	PCB_t * switchPCB;
 
@@ -64,7 +93,9 @@ void rm_children ( PCB_t ** ptrFirst, INT32 process_ID ){
 	}
 }
 
-//SUSPEND PROCESS
+/*
+ * SUSPEND PROCESS
+ */
 void suspend_Process ( INT32 process_ID, INT32 *error ){
 	PCB_t * switchPCB;
 	INT32	status;
@@ -77,7 +108,7 @@ void suspend_Process ( INT32 process_ID, INT32 *error ){
 		else (*error) = ERR_BAD_PARAM;
 
 		//GET READY PCB TO RUN
-		switchPCB = get_readyPCB();
+		CALL( switchPCB = get_readyPCB() );
 		if (switchPCB == NULL) ZCALL( Z502_IDLE() );
 		if (switchPCB != NULL) CALL( switch_Savecontext(switchPCB) );
 	}
@@ -102,7 +133,9 @@ INT32 ready_to_Suspend ( INT32 process_ID ){
 	ZCALL( unlockReady() );
 	return -1;
 }
-//RESUME PROCESS
+/*
+ * RESUME PROCESS
+ */
 void resume_Process ( INT32 process_ID, INT32 *error ){
 	ZCALL( lockReady() );
 	PCB_t *ptrCheck = pidList;

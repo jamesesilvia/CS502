@@ -224,6 +224,8 @@ void    os_init( void )
 	    procPTR = test1e;
 	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1f" ) == 0 ) )
 	    procPTR = test1f;
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1g" ) == 0 ) )
+		procPTR = test1g;
 	else
     	procPTR = test1c;
 	
@@ -354,12 +356,32 @@ void    svc( void ) {
     	case SYSNUM_RESUME_PROCESS:
     		CALL( resume_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
     		break;
+    	case SYSNUM_CHANGE_PRIORITY:
+    		CALL( change_Priority((INT32)Z502_ARG1.VAL,(INT32)Z502_ARG2.VAL,
+    				(INT32*)Z502_ARG3.PTR));
+    		break;
 		default:
     		printf("ERROR! call_type not recognized!\n");
     		printf("Entered Call_Type is %i\n", call_type);
     		break;
     }											// End of switch call_type
 }                                               // End of svc
+
+INT32 check_name( PCB_t **ptrFirst, char *name ){
+	ZCALL( lockReady() );
+	PCB_t *ptrCheck = *ptrFirst;
+
+	while (ptrCheck != NULL){
+		if(strcmp(ptrCheck->p_name, name) == 0){
+
+			ZCALL( unlockReady() );
+			return 0;
+		}
+		ptrCheck = ptrCheck->next;
+	}
+	ZCALL( unlockReady() );
+	return 1;
+}
 
 void Start_Timer(INT32 Time) {	
 	INT32		Status;

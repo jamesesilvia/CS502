@@ -48,7 +48,9 @@ PCB_t 	*rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id );
 //Move Queues
 void 	timerQueue_to_readyQueue( INT32 remove_id );
 void 	readyQueue_to_timerQueue( INT32 remove_id );
-//Change States
+//PCB Handle
+void 	change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error );
+INT32 	updatePriority ( INT32 process_ID, INT32 new_priority );
 void 	wait_to_Ready ( INT32 remove_id );
 void	ready_to_Running ( void );
 PCB_t 	*ready_to_Wait ( INT32 remove_id );

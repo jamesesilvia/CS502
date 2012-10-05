@@ -128,93 +128,7 @@ void timerQueue_to_readyQueue( INT32 remove_id ){
 	CALL( wait_to_Ready(remove_id) );
 	ZCALL( unlockReady() );
 }
-PCB_t *ready_to_Wait ( INT32 remove_id ){
-	PCB_t * ptrDel = pidList;
-	PCB_t * temp;
 
-	while ( ptrDel != NULL ){
-		if (ptrDel->p_id == remove_id){
-			ptrDel->p_state = WAITING_STATE;
-//			printf("CHANGE STATE %d", ptrDel->p_state);
-			temp = ptrDel;
-			return temp;
-		}
-		ptrDel = ptrDel->next;
-	}
-	//No ID in PCB List
-	return NULL;
-}
-void wait_to_Ready ( INT32 remove_id ){
-	PCB_t * ptrDel = pidList;
-
-	while ( ptrDel != NULL ){
-		if (ptrDel->p_id == remove_id){
-			ptrDel->p_state = READY_STATE;
-//			printf("\nCHANGE STATE %d NAME %s\n", ptrDel->p_state, ptrDel->p_name);
-			return;
-		}
-		ptrDel = ptrDel->next;
-	}
-	//No ID in PCB List
-	return;
-}
-void ready_to_Running ( void ){
-	ZCALL( lockReady() );
-	PCB_t * ptrDel = pidList;
-
-	while ( ptrDel != NULL ){
-		if (ptrDel->p_id == current_PCB->p_id){
-			ptrDel->p_state = RUNNING_STATE;
-		}
-		else if (ptrDel->p_state == RUNNING_STATE){
-			ptrDel->p_state = READY_STATE;
-		}
-		ptrDel = ptrDel->next;
-	}
-	ZCALL( unlockReady() );
-	return;
-}
-
-INT32 check_name( PCB_t **ptrFirst, char *name ){
-	ZCALL( lockReady() );
-	PCB_t *ptrCheck = *ptrFirst;
-
-	while (ptrCheck != NULL){
-		if(strcmp(ptrCheck->p_name, name) == 0){
-
-			ZCALL( unlockReady() );
-			return 0;
-		}
-		ptrCheck = ptrCheck->next;
-	}
-	ZCALL( unlockReady() );
-	return 1;
-}
-
-INT32 get_PCB_ID(PCB_t ** ptrFirst, char *name, INT32 *process_ID, INT32 *error){
-	ZCALL( lockReady() );
-//	printf("GET PCB ID %s\n", name);
-
-	if (strcmp("", name) == 0){
-		(*process_ID) = current_PCB->p_id;
-		(*error) = ERR_SUCCESS;
-		ZCALL( unlockReady() );
-		return 0;
-	}
-	PCB_t *ptrCheck = *ptrFirst;
-	while (ptrCheck != NULL){
-		if (strcmp(ptrCheck->p_name, name) == 0){
-			(*process_ID) = ptrCheck->p_id;
-			(*error) = ERR_SUCCESS;
-			ZCALL( unlockReady() );
-			return 0;
-		}
-		ptrCheck = ptrCheck->next;
-	}
-	(*error) = ERR_BAD_PARAM;
-	ZCALL( unlockReady() );
-	return -1;
-}
 // INT32 get_first_ID ( PCB_t ** ptrFirst ){
 	// lockBoth();
 	// PCB_t *ptrCheck = *ptrFirst;
@@ -263,7 +177,7 @@ PCB_t * get_readyPCB( void ){
 	ZCALL( unlockReady() );
 	return NULL;
 }
-//Timers
+//Timer Handling
 INT32 wake_timerList ( INT32 currentTime ){
 	ZCALL( lockTimer() );
 	PCB_t *ptrCheck = timerList;
