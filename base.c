@@ -50,8 +50,8 @@ extern char          **CALLING_ARGV;
 
 PCB_t		     	*pidList = NULL;
 PCB_t		     	*timerList = NULL;
-PCB_t		     	*readyList = NULL;
 PCB_t				*current_PCB = NULL;
+EVENT_t		     	*eventList = NULL;
 
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
@@ -62,8 +62,7 @@ char                 *call_names[] = { "mem_read ", "mem_write",
 
 INT32	 			inc_pid = 0;
 INT32				total_pid = 0;
-
-volatile 			ISR = 0;
+INT32				event_count = 0;
 
 /************************************************************************
     INTERRUPT_HANDLER
@@ -80,8 +79,7 @@ void    interrupt_handler( void ) {
 	INT32			   wokenUp;
 	INT32			   sleeptime;
 
-	lockISR();
-	
+//	lockISR();	
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id );
     // Set this device as target of our query
@@ -89,50 +87,54 @@ void    interrupt_handler( void ) {
     // Now read the status of this device
     MEM_READ(Z502InterruptStatus, &Status );
 	
-	if (Status == ERR_BAD_PARAM || Status == ERR_BAD_DEVICE_ID){
-		ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-		return;
-	}
-	else{
-		switch(device_id){
-			case(TIMER_INTERRUPT):
-//				printf("\nTIMER INTERRUPT OCCURED\n");
-				CALL( currentTime = get_currentTime() );
+	CALL( add_to_eventQueue(&device_id, &Status) );	
+	ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+	return;
+	
+	// if (Status == ERR_BAD_PARAM || Status == ERR_BAD_DEVICE_ID){
+		// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+		// return;
+	// }
+	// else{
+		// switch(device_id){
+			// case(TIMER_INTERRUPT):
+				//printf("\nTIMER INTERRUPT OCCURED\n");
+				// CALL( currentTime = get_currentTime() );
 				//Wake up all WAITING items that are before currentTime
-				CALL( wokenUp = wake_timerList(currentTime) );
+				// CALL( wokenUp = wake_timerList(currentTime) );
 				//Get sleeptime
-				CALL( sleeptime = checkTimer (currentTime) );
-//				CALL( printf("SLEEPTIMEEEEEEE %d\n", sleeptime) );
+				// CALL( sleeptime = checkTimer (currentTime) );
+				//CALL( printf("SLEEPTIMEEEEEEE %d\n", sleeptime) );
 
 				//New processes are Ready
-				if( sleeptime > 0){
-					if (wokenUp > 0){
-						CALL( switchPCB = get_readyPCB() );
-						if ( switchPCB->p_id == current_PCB->p_id ){
-							CALL( Start_Timer(sleeptime) );
-							ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-						}
-						else{
-							CALL( Start_Timer(sleeptime) );
-							ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-							CALL( switch_Savecontext( switchPCB ) );
-						}
-					}
+				// if( sleeptime > 0){
+					// if (wokenUp > 0){
+						// CALL( switchPCB = get_readyPCB() );
+						// if ( switchPCB->p_id == current_PCB->p_id ){
+							// CALL( Start_Timer(sleeptime) );
+							// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+						// }
+						// else{
+							// CALL( Start_Timer(sleeptime) );
+							// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+							// CALL( switch_Savecontext( switchPCB ) );
+						// }
+					// }
 					//No new processes wokenUp
-					else{
-						CALL( Start_Timer(sleeptime) );
-						ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-					}
-					break;
-				}
-				else{
-					ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-					break;
-				}	
-		}
-		unlockISR();
-		return;
-    }
+					// else{
+						// CALL( Start_Timer(sleeptime) );
+						// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+					// }
+					// break;
+				// }
+				// else{
+					// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+					// break;
+				// }	
+		// }
+		//unlockISR();
+		// return;
+    // }
 }                                       /* End of interrupt_handler */
 /************************************************************************
     FAULT_HANDLER
@@ -273,10 +275,8 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	
 	if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
 	
-	//Add to Main List
+	//Add to Ready List
 	CALL( add_to_readyQueue(&pidList, PCB) );
-//	CALL( priority_sort(&pidList) );
-//	CALL( print_queues(&pidList) );
 	
 	(*error) = ERR_SUCCESS;
 	(*pid) = PCB->p_id;
@@ -312,9 +312,12 @@ void    svc( void ) {
                 Z502_ARG5.VAL, Z502_ARG6.VAL );
         do_print--;
     }
-    //Test0 from slides
+	//Check ISR event_count, Handle BEFORE system calls.
+	if ( (event_count > 0) && (call_type != SYSNUM_TERMINATE_PROCESS) ){
+		CALL( eventHandler() );	
+	}
+	
     switch (call_type){
-		lockISR();
     	//Get time of day
     	case SYSNUM_GET_TIME_OF_DAY:
     		ZCALL(MEM_READ(Z502ClockStatus, &Time));
@@ -322,7 +325,6 @@ void    svc( void ) {
     		break;
     	//Terminate a process
     	case SYSNUM_TERMINATE_PROCESS:
-    		printf("\n\nTerminate Process Called\n\n");
     		CALL( terminate_Process( (INT32)Z502_ARG1.VAL, (INT32*)Z502_ARG2.PTR ) );
     		break;
     	//Sleep
@@ -338,7 +340,7 @@ void    svc( void ) {
 			if (sleepTime > 0) CALL( Start_Timer( sleepTime ) );
 			
 			CALL( switchPCB = get_readyPCB() );
-			if (switchPCB == NULL) ZCALL( Z502_IDLE() );
+			if (switchPCB == NULL) ZCALL( EVENT_IDLE() );
     		if (switchPCB != NULL) CALL( switch_Savecontext(switchPCB) );
     		break;
 
@@ -356,9 +358,11 @@ void    svc( void ) {
     	case SYSNUM_SUSPEND_PROCESS:
     		CALL( suspend_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
     		break;
+		//Resume Process
     	case SYSNUM_RESUME_PROCESS:
     		CALL( resume_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
     		break;
+		//Change Priority
     	case SYSNUM_CHANGE_PRIORITY:
     		CALL( change_Priority((INT32)Z502_ARG1.VAL,(INT32)Z502_ARG2.VAL,
     				(INT32*)Z502_ARG3.PTR));
@@ -366,11 +370,10 @@ void    svc( void ) {
 		default:
     		printf("ERROR! call_type not recognized!\n");
     		printf("Entered Call_Type is %i\n", call_type);
+			ZCALL( Z502_HALT() );
     		break;
     }											// End of switch call_type
-	unlockISR();
 }                                               // End of svc
-
 INT32 check_name( PCB_t **ptrFirst, char *name ){
 	ZCALL( lockReady() );
 	PCB_t *ptrCheck = *ptrFirst;
@@ -386,7 +389,6 @@ INT32 check_name( PCB_t **ptrFirst, char *name ){
 	ZCALL( unlockReady() );
 	return 1;
 }
-
 void Start_Timer(INT32 Time) {	
 	INT32		Status;
 	ZCALL ( HW_lock() );
@@ -394,12 +396,60 @@ void Start_Timer(INT32 Time) {
 	ZCALL( MEM_READ( Z502TimerStatus, &Status ) );
 	ZCALL ( HW_unlock() );
 }
-
-INT32 get_currentTime() {
+INT32 get_currentTime( void ) {
 	INT32 	currentTime;
 	ZCALL ( HW_lock() );
 	ZCALL( MEM_READ( Z502ClockStatus, &currentTime ) );
 	ZCALL ( HW_unlock() );
 	return currentTime;
+}
+/*
+* Handle events from the ISR
+*/
+void eventHandler ( void ) {
+	EVENT_t *ptrCheck = eventList;
+	
+    INT32 			   currentTime;
+	INT32			   wokenUp;
+	INT32			   sleeptime;
+    PCB_t 			   *switchPCB;
+
+	//Remove all Events from Queue
+	while (ptrCheck != NULL){
+		CALL( rm_from_eventQueue(ptrCheck->device_ID) );
+		ptrCheck = ptrCheck->next;
+	}
+	//Get current CPU Time	
+	CALL( currentTime = get_currentTime() );
+	//Wake up all WAITING items that are before currentTime
+	CALL( wokenUp = wake_timerList(currentTime) );
+	//Get sleeptime
+	CALL( sleeptime = checkTimer (currentTime) );
+
+	//There are more items on timerQueue
+	if( sleeptime > 0) CALL( Start_Timer(sleeptime) );
+	
+	//New items woken up
+	if (wokenUp > 0){
+		CALL( switchPCB = get_readyPCB() );
+		if (switchPCB == NULL){
+			ZCALL( EVENT_IDLE() );
+		}
+		else if ( switchPCB->p_id != current_PCB->p_id ){
+			CALL( switch_Savecontext( switchPCB ) );
+		}
+		else if ( switchPCB->p_id == current_PCB->p_id ){
+			return;			
+		}
+		else{
+			ZCALL( EVENT_IDLE() );
+		}
+	}	
+}
+//Check event_count. IDLE
+void EVENT_IDLE ( void ) {
+//	printf("EVENT IDLE");
+	if (event_count == 0) CALL( Z502_IDLE() );
+	CALL( eventHandler() );
 }
 

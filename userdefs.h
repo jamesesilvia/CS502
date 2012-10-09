@@ -26,10 +26,18 @@ typedef         struct {
 	void					*context;
 	void					*next;
 	void					*prev;
-    }PCB_t;
+    } PCB_t;
+	
+typedef			struct {
+	INT32					device_ID;
+	INT32					Status;
+	void					*next;
+	} EVENT_t;
+
 
 //Create Process
-INT32	OS_Create_Process( char *name, void *procPTR, INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
+INT32	OS_Create_Process( char *name, void *procPTR, 
+	INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
 //Contexts
 void 	make_context( PCB_t * PCB, void *procPTR);
 void 	make_switch_Savecontext( PCB_t * PCB, void *procPTR);
@@ -40,10 +48,12 @@ void	Start_Timer( INT32 Time );
 //Add Queues
 void 	add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry );
 void 	add_to_timerQueue ( PCB_t **ptrFirst, PCB_t *entry );
+void 	add_to_eventQueue ( INT32 *device_id, INT32 *status );
 INT32 	add_to_Queue( PCB_t **ptrFirst, PCB_t * entry);
 //Remove Queues
 INT32 	rm_from_readyQueue ( INT32 remove_id );
 void 	rm_from_timerQueue ( PCB_t **ptrFirst, INT32 remove_id );
+void 	rm_from_eventQueue ( INT32 remove_id );
 PCB_t 	*rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id );
 //Move Queues
 void 	timerQueue_to_readyQueue( INT32 remove_id );
@@ -73,17 +83,23 @@ void 	rm_children ( PCB_t **ptrFirst, INT32 process_ID );
 void 	suspend_Process ( INT32 process_ID, INT32 *error );
 void 	resume_Process ( INT32 process_ID, INT32 *error );
 //Timer Functions
-INT32 	get_currentTime();
+INT32 	get_currentTime( void );
 INT32 	checkTimer ( INT32 currentTime );
 INT32 	wake_timerList ( INT32 currentTime );
 //Debug
 void 	printTimer ( void );
 void	printReady ( void );
+//Idle
+void 	EVENT_IDLE ( void );
+//Handle Events
+void 	eventHandler ( void );
 
 //Global variables
 extern 		PCB_t 			*current_PCB;
 extern		PCB_t			*pidList;
 extern		PCB_t			*timerList;
+extern		EVENT_t			*eventList;
 extern 		INT32 			inc_pid;
 extern		INT32			total_pid;
-extern		volatile 		INT32			ISR;
+//extern		volatile 		INT32			ISR;
+extern		INT32			event_count;

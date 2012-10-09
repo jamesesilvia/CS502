@@ -27,6 +27,23 @@ void add_to_timerQueue( PCB_t **ptrFirst, PCB_t *entry ){
 	CALL( timer_sort() );
 	ZCALL( unlockTimer() );
 }
+void add_to_eventQueue ( INT32 *device_id, INT32 *status ){
+	EVENT_t *event = (EVENT_t *)(malloc(sizeof(EVENT_t)));
+	event->device_ID = *device_id;
+	event->Status = *status;
+	event->next = NULL;
+	
+	event_count++;
+	EVENT_t * ptrCheck = eventList;
+	if (ptrCheck == NULL){
+		eventList = event;
+		return;
+	}	
+	while(ptrCheck->next != NULL){
+		ptrCheck = ptrCheck->next;
+	}
+	ptrCheck->next = event;
+}
 INT32 add_to_Queue( PCB_t **ptrFirst, PCB_t * entry ){
 	//First Case
 	if ( *ptrFirst == NULL){
@@ -50,7 +67,6 @@ INT32 rm_from_readyQueue ( INT32 remove_id ){
 	total_pid--;
 	ZCALL( lockReady() );
 
-//	printf("REMOVED ID %d FROM READY", remove_id);
 	CALL( temp = rm_from_Queue(&pidList, remove_id) );
 	if ( (temp == NULL) && (total_pid != 0) ){
 		total_pid++;
@@ -58,7 +74,6 @@ INT32 rm_from_readyQueue ( INT32 remove_id ){
 		return -1;
 	}
 	else{
-//		printf("REMOVED %s", temp->p_name);
 		ZCALL( unlockReady() );
 		return 1;
 	}
@@ -68,14 +83,12 @@ void rm_from_timerQueue (  PCB_t **ptrFirst, INT32 remove_id ){
 	
 	ZCALL( lockTimer() );
 	CALL( temp = rm_from_Queue(ptrFirst, remove_id) );
-//	if (temp == NULL) printf("RETURNED NULL IN REMOVE TIMER");
 	ZCALL( unlockTimer() );
 }
 PCB_t *rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id ){
 	PCB_t * ptrDel = *ptrFirst;
 	PCB_t * ptrPrev = NULL;
 
-//	printf("NEED TO REMOVE ID: %d\n", remove_id);
 	while ( ptrDel != NULL ){
 		if (ptrDel->p_id == remove_id){
 			//First ID
@@ -90,7 +103,6 @@ PCB_t *rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id ){
 			}
 			//Middle ID
 			else{
-//				printf("Middle - Name: %s", ptrDel->p_name);
 				PCB_t * ptrNext = ptrDel->next;
 				ptrPrev->next = ptrDel->next;
 				ptrNext->prev = ptrDel->prev;
@@ -103,6 +115,33 @@ PCB_t *rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id ){
 	//No ID in PCB List
 	return NULL;
 }
+void rm_from_eventQueue ( INT32 remove_id ){
+	EVENT_t *ptrDel = eventList;
+	EVENT_t *ptrPrev = NULL;
+	
+	while(ptrDel != NULL){
+		if(ptrDel->device_ID == remove_id){
+			event_count--;
+			//First ID
+			if(ptrPrev == NULL){
+				eventList = ptrDel->next;
+				return;
+			}
+			//Last ID
+			else if (ptrDel->next == NULL){
+				ptrPrev->next = NULL;
+				return;
+			}
+			//Midle ID
+			else{
+				ptrPrev->next = ptrDel->next;
+				return;			
+			}		
+		}
+		ptrPrev = ptrDel;
+		ptrDel = ptrDel->next;		
+	}	
+}
 /*
  * Moving Queues
  */
@@ -111,19 +150,16 @@ void readyQueue_to_timerQueue( INT32 remove_id ){
 
 	ZCALL( lockReady() );
 	CALL( temp = ready_to_Wait(remove_id) );
-//	if (temp == NULL) printf("RETURNED NULL IN REMOVE (READY TO TIMER)");
 	ZCALL( unlockReady() );
 	
 	if (temp != NULL){	
 		CALL( add_to_timerQueue(&timerList, temp) );
-//		print_queues(&timerList);
 	}
 }
 void timerQueue_to_readyQueue( INT32 remove_id ){
 	PCB_t *temp;
 
 	CALL( temp = rm_from_Queue(&timerList, remove_id) );
-//	if (temp == NULL) printf("RETURNED NULL IN REMOVE (TIMER TO READY)");
 
 	ZCALL( lockReady() );
 	CALL( wait_to_Ready(remove_id) );
@@ -154,29 +190,23 @@ void timerQueue_to_readyQueue( INT32 remove_id ){
 // }
 PCB_t * get_readyPCB( void ){
 	
-//	CALL ( printf("GET READY PCB\n") );
 	ZCALL ( lockReady() );
 	PCB_t *ptrCheck = pidList;
 	PCB_t *ptrPrev = NULL;
+	PCB_t *ptrReturn = NULL;
 
 	while (ptrCheck != NULL){
-//		CALL ( printf("END NAME %s", ptrCheck->p_name) );
+		if (ptrCheck->p_state == READY_STATE){
+			if (ptrReturn==NULL) ptrReturn = ptrCheck;
+			else if (ptrReturn->p_priority <= ptrCheck->p_priority){
+				ptrReturn = ptrCheck;
+			}		
+		}
 		ptrPrev = ptrCheck;
 		ptrCheck = ptrCheck->next;
 	}
-	
-	ptrCheck = ptrPrev;
-	while (ptrCheck != NULL){
-//		printf("ptrCheck NAME %s\n", ptrCheck->p_name);
-		if (ptrCheck->p_state == READY_STATE){
-			ZCALL( unlockReady() );
-//			printf("READY ptrCheck Name %s\n", ptrCheck->p_name);
-			return ptrCheck;
-		}
-		ptrCheck = ptrCheck->prev;	
-	}
 	ZCALL( unlockReady() );
-	return NULL;
+	return ptrReturn;
 }
 //Timer Handling
 INT32 wake_timerList ( INT32 currentTime ){
@@ -211,7 +241,7 @@ INT32 checkTimer ( INT32 currentTime ){
 	}
 	//New sleeptime for Timer
 	unlockTimer();
-	return (ptrCheck->p_time - get_currentTime() + 500);
+	return (ptrCheck->p_time - currentTime);
 }
 
 

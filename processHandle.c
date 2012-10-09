@@ -10,7 +10,6 @@
  */
 INT32 get_PCB_ID(PCB_t ** ptrFirst, char *name, INT32 *process_ID, INT32 *error){
 	ZCALL( lockReady() );
-//	printf("GET PCB ID %s\n", name);
 
 	if (strcmp("", name) == 0){
 		(*process_ID) = current_PCB->p_id;
@@ -44,21 +43,19 @@ void terminate_Process ( INT32 process_ID, INT32 *error ){
 
 	//if pid is -1; terminate self
 	if ( process_ID == -1 ){
-		//printf("\nTerminate self\n");
 
 		CALL( status = rm_from_readyQueue(current_PCB->p_id) );
 		if (status) (*error) = ERR_SUCCESS;
 		else (*error) = ERR_BAD_PARAM;
 		if (total_pid > 0){
 			CALL( switchPCB = get_readyPCB() );
-			if (switchPCB == NULL) ZCALL( Z502_IDLE() );
+			if (switchPCB == NULL) ZCALL( EVENT_IDLE() );
 			if (switchPCB !=NULL) CALL( switch_Savecontext(switchPCB) );
 		}
 		else CALL ( Z502_HALT() );
 	}
 	//if pid -2; terminate self and any child
 	else if ( process_ID == -2 ){
-		//printf("\nTerminate self and children\n");
 		CALL( rm_children(&pidList, current_PCB->p_id) );
 
 		CALL( status = rm_from_readyQueue(current_PCB->p_id) );
@@ -66,7 +63,7 @@ void terminate_Process ( INT32 process_ID, INT32 *error ){
 		else 	(*error) = ERR_BAD_PARAM;
 		if (total_pid > 0){
 			CALL( switchPCB = get_readyPCB() );
-			if (switchPCB == NULL) ZCALL( Z502_IDLE() );
+			if (switchPCB == NULL) ZCALL( EVENT_IDLE() );
 			if (switchPCB != NULL) CALL( switch_Savecontext(switchPCB) );
 		}
 		else ZCALL( Z502_HALT() );
@@ -86,7 +83,6 @@ void rm_children ( PCB_t ** ptrFirst, INT32 process_ID ){
 	PCB_t * ptrCheck = *ptrFirst;
 	while (ptrCheck != NULL){
 		if ( ptrCheck->p_parent == process_ID ){
-//			printf("ptrCheck Parent Name %s\n", ptrCheck->p_name);
 			CALL( rm_from_readyQueue( ptrCheck->p_id ) );
 		}
 		ptrCheck = ptrCheck->next;
@@ -109,7 +105,7 @@ void suspend_Process ( INT32 process_ID, INT32 *error ){
 
 		//GET READY PCB TO RUN
 		CALL( switchPCB = get_readyPCB() );
-		if (switchPCB == NULL) ZCALL( Z502_IDLE() );
+		if (switchPCB == NULL) ZCALL( EVENT_IDLE() );
 		if (switchPCB != NULL) CALL( switch_Savecontext(switchPCB) );
 	}
 	else{
