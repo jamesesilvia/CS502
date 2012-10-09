@@ -10,10 +10,10 @@ Successful Tests:
 Test0
 Test1a
 Test1b
-Test1c - Additional Debug (ISR)
-Test1d - Additional Debug (ISR)
+Test1c
+Test1d
 Test1e
-Test1f - Additional Debug (ISR)
+Test1f
 Test1g
 Test1h
 
