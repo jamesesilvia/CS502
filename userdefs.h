@@ -13,8 +13,16 @@
 
 #define			MAX_PIDs				100
 #define			MAX_NAME				16
+#define			MAX_MSG					128
+#define			MAX_MSG_COUNT			8
 
 #define			DEBUGFLAG 				1
+
+typedef			struct{
+	INT32					dest_ID;
+	char 					message[MAX_MSG+1];
+	void					*next;
+	} MSG_t;
 
 typedef         struct {
 	char					p_name[MAX_NAME+1];
@@ -23,9 +31,13 @@ typedef         struct {
 	INT32					p_priority;
 	INT32					p_parent;
 	INT32					p_time;
+	INT32					msg_state;
+	INT32					msg_count;
 	void					*context;
 	void					*next;
 	void					*prev;
+	void					*Inbox;
+	void					*Outbox;
     } PCB_t;
 	
 typedef			struct {
@@ -44,11 +56,11 @@ void 	make_switch_Savecontext( PCB_t * PCB, void *procPTR);
 void 	make_switch_Killcontext( PCB_t * PCB, void *procPTR);
 void 	switch_Killcontext( PCB_t * PCB );
 void 	switch_Savecontext ( PCB_t * PCB );
-void	Start_Timer( INT32 Time );
 //Add Queues
 void 	add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry );
 void 	add_to_timerQueue ( PCB_t **ptrFirst, PCB_t *entry );
 void 	add_to_eventQueue ( INT32 *device_id, INT32 *status );
+INT32 	add_to_msgQueue ( MSG_t *entry );
 INT32 	add_to_Queue( PCB_t **ptrFirst, PCB_t * entry);
 //Remove Queues
 INT32 	rm_from_readyQueue ( INT32 remove_id );
@@ -70,10 +82,9 @@ void 	timerSwap( PCB_t *Prev, PCB_t *Curr );
 void 	ready_sort( void );
 void 	readySwap( PCB_t *Prev, PCB_t *Curr );
 //Queue Helpers
-INT32 	pid_Bounce( PCB_t **ptrFirst, INT32 id_check);
 INT32 	check_name ( PCB_t **ptrFirst, char *name );
 INT32 	get_PCB_ID( PCB_t **ptrFirst, char *name, INT32 *process_ID, INT32 *error );
-INT32 	get_first_ID ( PCB_t ** ptrFirst );
+INT32	check_pid_ID ( INT32 check_ID );
 //Get PCB
 PCB_t 	*get_firstPCB(PCB_t ** ptrFirst);
 PCB_t 	*get_readyPCB( void );
@@ -86,13 +97,20 @@ void 	resume_Process ( INT32 process_ID, INT32 *error );
 INT32 	get_currentTime( void );
 INT32 	checkTimer ( INT32 currentTime );
 INT32 	wake_timerList ( INT32 currentTime );
+void	Start_Timer( INT32 Time );
 //Debug
 void 	printTimer ( void );
 void	printReady ( void );
+void	printEvent ( void );
 //Idle
 void 	EVENT_IDLE ( void );
 //Handle Events
 void 	eventHandler ( void );
+//Send Message
+void send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error );
+//Receive Message
+void receive_Message ( INT32 src_ID, char *message, 
+	INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID, INT32 *error);
 
 //Global variables
 extern 		PCB_t 			*current_PCB;

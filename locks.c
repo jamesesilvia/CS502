@@ -49,6 +49,7 @@ void HW_unlock ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 2, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
+//EventQueue ocks
 void lockEvent ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 3, DO_LOCK, SUSPEND_UNTIL_LOCKED, &LockResult );

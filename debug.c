@@ -17,6 +17,7 @@ void printTimer ( void ){
 		printf("State: %d\n", ptrCheck->p_state);
 		ptrCheck = ptrCheck->next;
 	}
+	printf("\n");
 	return;
 }
 void printReady ( void ){
@@ -29,6 +30,17 @@ void printReady ( void ){
 		printf("Priority: %d\t", ptrCheck->p_priority);
 		printf("State: %d\n", ptrCheck->p_state);
 		ptrCheck = ptrCheck->next;
+	}
+	printf("\n");
+	return;
+}
+void printEvent ( void ){
+	EVENT_t * ptrCheck = eventList;
+	while (ptrCheck != NULL){
+		printf("------------------------------\n");
+		printf("Device ID: %d\t", ptrCheck->device_ID);
+		printf("Status: %d\t", ptrCheck->Status);
+		ptrCheck = ptrCheck->next;	
 	}
 	printf("\n");
 	return;

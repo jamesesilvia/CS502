@@ -272,6 +272,7 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	PCB->p_priority = priority;
 	PCB->next = NULL;
 	PCB->prev = NULL;
+	PCB->msg_count = 0;
 	
 	if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
 	
@@ -347,7 +348,7 @@ void    svc( void ) {
     	//Create Process
     	case SYSNUM_CREATE_PROCESS:
     		CALL( OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR,
-    				(INT32)Z502_ARG3.VAL,(INT32*)Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0) );
+    			(INT32)Z502_ARG3.VAL,(INT32*)Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0) );
     		break;
     	//Get Process ID
     	case SYSNUM_GET_PROCESS_ID:
@@ -365,7 +366,18 @@ void    svc( void ) {
 		//Change Priority
     	case SYSNUM_CHANGE_PRIORITY:
     		CALL( change_Priority((INT32)Z502_ARG1.VAL,(INT32)Z502_ARG2.VAL,
-    				(INT32*)Z502_ARG3.PTR));
+    			(INT32*)Z502_ARG3.PTR));
+    		break;
+    	//Send Message
+    	case SYSNUM_SEND_MESSAGE:
+    		CALL( send_Message((INT32)Z502_ARG1.VAL,(char *)Z502_ARG2.PTR,
+    			(INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR) );
+    		break;
+    	//Receive Message
+    	case SYSNUM_RECEIVE_MESSAGE:
+    		CALL( receive_Message((INT32)Z502_ARG1.VAL,(char *)Z502_ARG2.PTR,
+    			(INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR,
+    			(INT32 *)Z502_ARG6.PTR) );
     		break;
 		default:
     		printf("ERROR! call_type not recognized!\n");
