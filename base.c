@@ -95,47 +95,8 @@ void    interrupt_handler( void ) {
 		// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
 		// return;
 	// }
-	// else{
-		// switch(device_id){
-			// case(TIMER_INTERRUPT):
-				//printf("\nTIMER INTERRUPT OCCURED\n");
-				// CALL( currentTime = get_currentTime() );
-				//Wake up all WAITING items that are before currentTime
-				// CALL( wokenUp = wake_timerList(currentTime) );
-				//Get sleeptime
-				// CALL( sleeptime = checkTimer (currentTime) );
-				//CALL( printf("SLEEPTIMEEEEEEE %d\n", sleeptime) );
-
-				//New processes are Ready
-				// if( sleeptime > 0){
-					// if (wokenUp > 0){
-						// CALL( switchPCB = get_readyPCB() );
-						// if ( switchPCB->p_id == current_PCB->p_id ){
-							// CALL( Start_Timer(sleeptime) );
-							// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-						// }
-						// else{
-							// CALL( Start_Timer(sleeptime) );
-							// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-							// CALL( switch_Savecontext( switchPCB ) );
-						// }
-					// }
-					//No new processes wokenUp
-					// else{
-						// CALL( Start_Timer(sleeptime) );
-						// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-					// }
-					// break;
-				// }
-				// else{
-					// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-					// break;
-				// }	
-		// }
-		//unlockISR();
-		// return;
-    // }
 }                                       /* End of interrupt_handler */
+
 /************************************************************************
     FAULT_HANDLER
         The beginning of the OS502.  Used to receive hardware faults.
@@ -206,7 +167,6 @@ void    os_init( void )
 
 
     /*  Determine if the switch was set, and if so go to demo routine.  */
-
     if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "sample" ) == 0 ) )
         {
         ZCALL( Z502_MAKE_CONTEXT( &next_context,
@@ -214,6 +174,7 @@ void    os_init( void )
         ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &next_context ));
     }                   /* This routine should never return!!           */
 
+    /*          Based on user input, select test appropriately          */
     if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test0" ) == 0 ) )
         procPTR = test0;
     else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1a" ) == 0 ) )
@@ -234,8 +195,16 @@ void    os_init( void )
 		procPTR = test1h;
 	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1i" ) == 0 ) )
 		procPTR = test1i;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1j" ) == 0 ) )
+        procPTR = test1j;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1k" ) == 0 ) )
+        procPTR = test1k;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1l" ) == 0 ) )
+        procPTR = test1l;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1m" ) == 0 ) )
+        procPTR = test1m;
 	else
-    	procPTR = test1c;
+    	procPTR = test1i;
 	
     CALL( OS_Create_Process(CALLING_ARGV[1], procPTR, 0, &i, &i, 1) );
 }                                               /* End of os_init       */
@@ -262,16 +231,18 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 		return -1;
 	}	
 	inc_pid++;
+
+    //Checks are clear, build PCB
     PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
 	PCB->p_state = NEW_STATE;
 	PCB->p_id = inc_pid;
 	PCB->p_time = 0;
-
 	memset(PCB->p_name, 0, MAX_NAME+1);
 	strcpy(PCB->p_name,name);
 	PCB->p_priority = priority;
 	PCB->next = NULL;
 	PCB->prev = NULL;
+    PCB->msg_state = READY_MSG;
 	PCB->msg_count = 0;
 	
 	if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
@@ -314,7 +285,7 @@ void    svc( void ) {
         do_print--;
     }
 	//Check ISR event_count, Handle BEFORE system calls.
-	if ( (event_count > 0) && (call_type != SYSNUM_TERMINATE_PROCESS) ){
+	if ( (event_count < 0) && (call_type != SYSNUM_TERMINATE_PROCESS) ){
 		CALL( eventHandler() );	
 	}
 	

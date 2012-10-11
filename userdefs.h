@@ -2,7 +2,7 @@
 #include		"stdlib.h"
 
 /* Process Control Block Definitions */
-// State
+// Process State
 #define			NEW_STATE				90
 #define			READY_STATE				91
 #define			RUNNING_STATE			92
@@ -11,19 +11,28 @@
 //Not currently Used
 #define			HALTED_STATE			95
 
+//Message Status States
+#define			RECEIVE_MSG 			60
+#define			SEND_MSG 				61
+#define			READY_MSG				62
+
+//Max IDs, PCB Name, MSG Buff Size, MSG Count
 #define			MAX_PIDs				100
 #define			MAX_NAME				16
 #define			MAX_MSG					128
 #define			MAX_MSG_COUNT			8
 
+//debugPrint, 1 to print, 0 to not print
 #define			DEBUGFLAG 				1
 
+//Message typedef
 typedef			struct{
 	INT32					dest_ID;
 	char 					message[MAX_MSG+1];
 	void					*next;
 	} MSG_t;
 
+//PCB typedef
 typedef         struct {
 	char					p_name[MAX_NAME+1];
 	INT32					p_id;
@@ -39,13 +48,15 @@ typedef         struct {
 	void					*Inbox;
 	void					*Outbox;
     } PCB_t;
-	
+
+//Event typedef
 typedef			struct {
 	INT32					device_ID;
 	INT32					Status;
 	void					*next;
 	} EVENT_t;
 
+/*			FUNCTION CALLS				*/
 
 //Create Process
 INT32	OS_Create_Process( char *name, void *procPTR, 
@@ -102,17 +113,19 @@ void	Start_Timer( INT32 Time );
 void 	printTimer ( void );
 void	printReady ( void );
 void	printEvent ( void );
+void 	debugPrint ( char * toprint );
 //Idle
 void 	EVENT_IDLE ( void );
 //Handle Events
 void 	eventHandler ( void );
-//Send Message
+//Handle Messages
 void send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error );
-//Receive Message
-void receive_Message ( INT32 src_ID, char *message, 
-	INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID, INT32 *error);
+void receive_Message ( INT32 src_ID, char *message,
+ 	INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID, INT32 *error);
+MSG_t 	*get_Message ( void );
+//
 
-//Global variables
+/*			Global variables			*/
 extern 		PCB_t 			*current_PCB;
 extern		PCB_t			*pidList;
 extern		PCB_t			*timerList;

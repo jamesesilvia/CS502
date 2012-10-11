@@ -45,3 +45,8 @@ void printEvent ( void ){
 	printf("\n");
 	return;
 }
+void debugPrint ( char * toprint ){
+	if (DEBUGFLAG){
+		printf("%s\n", toprint);
+	}
+}
