@@ -115,6 +115,24 @@ void    fault_handler( void )
     // Now read the status of this device
     MEM_READ(Z502InterruptStatus, &status );
 
+    switch(device_id){
+        case(CPU_ERROR):
+            debugPrint("CPU ERROR");
+            MEM_WRITE(Z502InterruptClear, &Index );
+            terminate_Process(-2, &Index);
+            break;
+        case(INVALID_MEMORY):
+            debugPrint("INVALID MEMORY");
+            MEM_WRITE(Z502InterruptClear, &Index );
+            terminate_Process(-2, &Index);
+            break;
+        case(PRIVILEGED_INSTRUCTION):
+            debugPrint("PRIVILEDGED INSTRUCTION");
+            MEM_WRITE(Z502InterruptClear, &Index );
+            terminate_Process(-2, &Index);
+        break;
+    }
+
     printf( "Fault_handler: Found vector type %d with value %d\n",
                         device_id, status );
 
@@ -133,12 +151,25 @@ void    fault_handler( void )
 void    os_switch_context_complete( void )
     {
     static INT16        do_print = TRUE;
+    INT16               call_type;
 
     if ( do_print == TRUE )
     {
         printf( "os_switch_context_complete  called before user code.\n");
         do_print = FALSE;
     }
+//    printReady();
+
+    if (call_type == SYSNUM_RECEIVE_MESSAGE){
+        printf("SYSNUM RECEIVE PROCESS\n");
+    }
+    wakeUp_Messages();
+    printf("CURRENT PCB %s\n",current_PCB->p_name);
+//    CALL( exchange_Messages() );
+//    char *message;
+//    strcpy(message, "SWITCHED TO " );
+//   strcat(message, current_PCB->p_name);
+//    debugPrint(message);
 }                               /* End of os_switch_context_complete */
 
 /************************************************************************
@@ -431,7 +462,6 @@ void eventHandler ( void ) {
 }
 //Check event_count. IDLE
 void EVENT_IDLE ( void ) {
-//	printf("EVENT IDLE");
 	if (event_count == 0) CALL( Z502_IDLE() );
 	CALL( eventHandler() );
 }

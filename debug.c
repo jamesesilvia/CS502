@@ -28,7 +28,8 @@ void printReady ( void ){
 		printf("ID: %d\t", ptrCheck->p_id);
 		printf("Time: %d\t", ptrCheck->p_time);
 		printf("Priority: %d\t", ptrCheck->p_priority);
-		printf("State: %d\n", ptrCheck->p_state);
+		printf("State: %d\t", ptrCheck->p_state);
+		printf("MSGState: %d\n", ptrCheck->msg_state);
 		ptrCheck = ptrCheck->next;
 	}
 	printf("\n");
@@ -41,6 +42,17 @@ void printEvent ( void ){
 		printf("Device ID: %d\t", ptrCheck->device_ID);
 		printf("Status: %d\t", ptrCheck->Status);
 		ptrCheck = ptrCheck->next;	
+	}
+	printf("\n");
+	return;
+}
+void printMessages ( MSG_t * Message ){
+	while(Message != NULL){
+		printf("------------------------------\n");
+		printf("MSG: %s\t", Message->message);
+		printf("SRC ID: %d\t", Message->src_ID);
+		printf("DEST ID: %d\n", Message->dest_ID);
+		Message = Message->next;
 	}
 	printf("\n");
 	return;

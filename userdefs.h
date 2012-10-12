@@ -16,18 +16,21 @@
 #define			SEND_MSG 				61
 #define			READY_MSG				62
 
-//Max IDs, PCB Name, MSG Buff Size, MSG Count
+//Max IDs, PCB Name, Priority, MSG Buff Size, MSG Count
 #define			MAX_PIDs				100
 #define			MAX_NAME				16
+#define			MAX_PRIO				200
 #define			MAX_MSG					128
 #define			MAX_MSG_COUNT			8
 
 //debugPrint, 1 to print, 0 to not print
-#define			DEBUGFLAG 				1
+#define			DEBUGFLAG 				0
 
 //Message typedef
 typedef			struct{
 	INT32					dest_ID;
+	INT32					src_ID;
+	INT32					Length;
 	char 					message[MAX_MSG+1];
 	void					*next;
 	} MSG_t;
@@ -60,7 +63,7 @@ typedef			struct {
 
 //Create Process
 INT32	OS_Create_Process( char *name, void *procPTR, 
-	INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
+			INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
 //Contexts
 void 	make_context( PCB_t * PCB, void *procPTR);
 void 	make_switch_Savecontext( PCB_t * PCB, void *procPTR);
@@ -119,10 +122,17 @@ void 	EVENT_IDLE ( void );
 //Handle Events
 void 	eventHandler ( void );
 //Handle Messages
-void send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error );
-void receive_Message ( INT32 src_ID, char *message,
- 	INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID, INT32 *error);
-MSG_t 	*get_Message ( void );
+void 	send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error );
+void 	receive_Message ( INT32 src_ID, char *message,
+ 			INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID, INT32 *error);
+MSG_t 	*get_Message ( INT32 src_ID );
+void 	exchange_Messages ( void );
+void 	remove_first_MSG ( MSG_t * remove );
+void 	sendMSG_to_all ( MSG_t * tosend );
+void 	sendMSG_to_one ( MSG_t * tosend );
+MSG_t 	*check_Inbox ( INT32 src_ID );
+void	 wakeUp_Messages ( void );
+void 	target_to_Receive ( INT32 dest_ID );
 //
 
 /*			Global variables			*/

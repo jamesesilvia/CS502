@@ -246,19 +246,16 @@ INT32 checkTimer ( INT32 currentTime ){
 }
 //check if ID exists in pidList
 check_pid_ID ( INT32 check_ID ){
-	ZCALL( lockReady() );
 	PCB_t 	*ptrCheck = pidList;
 
 	while(ptrCheck != NULL){
 		//ID Exists
 		if (ptrCheck->p_id == check_ID){
-			ZCALL( unlockReady() );
 			return 1;
 		}
 		ptrCheck = ptrCheck->next;
 	}
 	//ID does not exist
-	ZCALL ( unlockReady() );
 	return -1;
 }
 

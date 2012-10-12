@@ -12,11 +12,17 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 	PCB_t * switchPCB;
 	INT32	status;
 
+	//New priority exceeds limit
+	if (new_priority > MAX_PRIO){
+		(*error) = ERR_BAD_PARAM;
+		return;
+	}
+
 	//if pid -1, UPDATE SELF
 	if ( process_ID == -1 ){
 		//UPDATE SELF, or return error
 		CALL( status = updatePriority(current_PCB->p_id, new_priority) );
-		if (status) (*error) = ERR_SUCCESS;
+		if (status == 1) (*error) = ERR_SUCCESS;
 		else{
 			(*error) = ERR_BAD_PARAM;
 			return;
@@ -25,7 +31,7 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 	//else, update PID
 	else{
 		CALL( status = updatePriority(process_ID, new_priority) );
-		if (status) (*error) = ERR_SUCCESS;
+		if (status == 1) (*error) = ERR_SUCCESS;
 		else{
 			(*error) = ERR_BAD_PARAM;
 			return;
@@ -33,7 +39,6 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 	}
 	ZCALL( lockReady() );
 	CALL( ready_sort() );
-//	printReady();
 	ZCALL( unlockReady() );
 
 	//GET READY PCB TO RUN

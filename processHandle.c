@@ -96,11 +96,20 @@ void suspend_Process ( INT32 process_ID, INT32 *error ){
 	PCB_t * switchPCB;
 	INT32	status;
 
+	INT32 check;
+	CALL( check = check_pid_ID(process_ID) );
+	if (process_ID == -1) check = 1;
+	if (check == -1){
+		debugPrint("IN SUSPEND PROCESS: ID DOES NOT EXIST");
+		(*error) = ERR_BAD_PARAM;
+		return;
+	}
+
 	//if pid -1, suspend self
 	if ( process_ID == -1 ){
 		//RUNNING TO SUSPEND STATE
 		CALL( status = ready_to_Suspend(current_PCB->p_id) );
-		if (status) (*error) = ERR_SUCCESS;
+		if (status == 1) (*error) = ERR_SUCCESS;
 		else (*error) = ERR_BAD_PARAM;
 
 		//GET READY PCB TO RUN
@@ -110,7 +119,7 @@ void suspend_Process ( INT32 process_ID, INT32 *error ){
 	}
 	else{
 		CALL( status = ready_to_Suspend(process_ID) );
-		if (status) (*error) = ERR_SUCCESS;
+		if (status == 1) (*error) = ERR_SUCCESS;
 		else (*error) = ERR_BAD_PARAM;
 	}
 }
@@ -120,6 +129,10 @@ INT32 ready_to_Suspend ( INT32 process_ID ){
 
 	while ( ptrCheck != NULL ){
 		if (ptrCheck->p_id == process_ID){
+			if ( ptrCheck->p_state == SUSPENDED_STATE){
+				ZCALL( unlockReady() );
+				return -1;
+			}
 			ptrCheck->p_state = SUSPENDED_STATE;
 			ZCALL( unlockReady() );
 			return 1;
@@ -135,6 +148,16 @@ INT32 ready_to_Suspend ( INT32 process_ID ){
 void resume_Process ( INT32 process_ID, INT32 *error ){
 	ZCALL( lockReady() );
 	PCB_t *ptrCheck = pidList;
+
+	INT32 check;
+	CALL( check = check_pid_ID(process_ID) );
+	if (process_ID == -1) check = 1;
+	if (check == -1){
+		debugPrint("IN RESUME PROCESS: ID DOES NOT EXIST");
+		ZCALL( unlockReady() );
+		(*error) = ERR_BAD_PARAM;
+		return;
+	}
 
 	while ( ptrCheck != NULL ){
 		if (ptrCheck->p_id == process_ID){
