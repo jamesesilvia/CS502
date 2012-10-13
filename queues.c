@@ -44,7 +44,7 @@ void add_to_eventQueue ( INT32 *device_id, INT32 *status ){
 	}
 	ptrCheck->next = event;
 }
-INT32 add_to_msgQueue ( MSG_t *entry ){
+INT32 add_to_Outbox ( MSG_t *entry ){
 	(current_PCB->msg_count)++;
 	if(current_PCB->msg_count > MAX_MSG_COUNT){
 		return -1;
@@ -62,6 +62,29 @@ INT32 add_to_msgQueue ( MSG_t *entry ){
 	}
 	toSend->next = entry;
 	return 1;
+}
+void add_to_Inbox ( PCB_t *dest, MSG_t *msgRecv ){
+	//Create the new Inbox Message
+	MSG_t *MSG = (MSG_t *)(malloc(sizeof(MSG_t)));
+ 	MSG->dest_ID = msgRecv->dest_ID;
+ 	MSG->src_ID = msgRecv->src_ID;
+ 	MSG->Length = msgRecv->Length;
+ 	memset(MSG->message, 0, MAX_MSG+1);
+	strcpy(MSG->message, msgRecv->message);
+	MSG->next = NULL;
+
+	MSG_t *Inbox = dest->Inbox;
+
+	//If First Message
+	if ( Inbox == NULL){
+		dest->Inbox = MSG;
+		return;
+	}
+	//Otherwise append to end of Outbox
+	while (Inbox->next != NULL){
+		Inbox = Inbox->next;
+	}
+	Inbox->next = MSG;
 }
 //Helper function for timer and ready Queues
 INT32 add_to_Queue( PCB_t **ptrFirst, PCB_t * entry ){
@@ -198,7 +221,7 @@ PCB_t * get_readyPCB( void ){
 	while (ptrCheck != NULL){
 		if (ptrCheck->p_state == READY_STATE){
 			if (ptrReturn==NULL) ptrReturn = ptrCheck;
-			else if (ptrReturn->p_priority <= ptrCheck->p_priority){
+			else if (ptrReturn->p_priority >= ptrCheck->p_priority){
 				ptrReturn = ptrCheck;
 			}		
 		}

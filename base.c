@@ -152,24 +152,23 @@ void    os_switch_context_complete( void )
     {
     static INT16        do_print = TRUE;
     INT16               call_type;
+    MSG_t*              Message;
+
+    call_type = (INT16)SYS_CALL_CALL_TYPE;
 
     if ( do_print == TRUE )
     {
         printf( "os_switch_context_complete  called before user code.\n");
         do_print = FALSE;
     }
-//    printReady();
 
     if (call_type == SYSNUM_RECEIVE_MESSAGE){
-        printf("SYSNUM RECEIVE PROCESS\n");
-    }
-    wakeUp_Messages();
-    printf("CURRENT PCB %s\n",current_PCB->p_name);
-//    CALL( exchange_Messages() );
-//    char *message;
-//    strcpy(message, "SWITCHED TO " );
-//   strcat(message, current_PCB->p_name);
-//    debugPrint(message);
+        //Z502_ARG2.PTR = *message
+        //Z502_ARG4.PTR = *Length
+        //Z502_ARG5.PTR = *send_ID        
+        
+        CALL( get_msg_Inbox((char *)Z502_ARG2.PTR,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR) );
+   }
 }                               /* End of os_switch_context_complete */
 
 /************************************************************************
@@ -235,7 +234,7 @@ void    os_init( void )
     else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1m" ) == 0 ) )
         procPTR = test1m;
 	else
-    	procPTR = test1i;
+    	procPTR = test1j;
 	
     CALL( OS_Create_Process(CALLING_ARGV[1], procPTR, 0, &i, &i, 1) );
 }                                               /* End of os_init       */

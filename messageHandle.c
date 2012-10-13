@@ -10,6 +10,12 @@
 */
  void send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error ){
 
+ 	/* Helper prints for Debugging
+ 	printf("\nSENDING MESSAGE TO: %d\n", dest_ID);
+ 	printf("WITH A MESSAGE OF: %s\n", message);
+ 	printf("OF LENGTH: %d\n\n", msg_Len);
+	*/
+
  	//Check that dest_ID exists
  	INT32 check;
  	CALL( check = check_pid_ID(dest_ID) );
@@ -37,15 +43,32 @@
 	MSG->next = NULL;
 
 	//Add the message to the current PCBs Outbox
-	CALL( check = add_to_msgQueue(MSG) );
+	CALL( check = add_to_Outbox(MSG) );
 	if (check == -1){
 		debugPrint("IN SEND MESSAGE: OUTBOX MAX EXCEEDED");
 		(*error) = ERR_BAD_PARAM;
 		return;
 	}	
 	else (*error) = ERR_SUCCESS;
-	CALL( target_to_Receive(dest_ID) );
+
 	current_PCB->msg_state = SEND_MSG;
+
+	//Send if Dest is Ready to Receive, and set Dest to Ready otherwise
+	CALL( send_if_dest_Receive(MSG, dest_ID) );
+	CALL( target_to_Receive(dest_ID) );
+}
+
+void send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID ){
+	PCB_t *dest = pidList;
+	while (dest!=NULL){
+		if (dest->p_id == dest_ID){
+			if (dest->msg_state == RECEIVE_MSG){
+				add_to_Inbox(dest, tosend);
+				return;
+			}
+		}
+		dest = dest->next;
+	}
 }
 void target_to_Receive ( INT32 dest_ID ){
 	ZCALL( lockReady() );
@@ -54,6 +77,7 @@ void target_to_Receive ( INT32 dest_ID ){
 	while(ptrCheck!=NULL){
 		if(ptrCheck->p_id == dest_ID){
 			ptrCheck->msg_state = RECEIVE_MSG;
+			ptrCheck->p_state = READY_STATE;
 		}
 		ptrCheck = ptrCheck->next;
 	}
@@ -82,49 +106,52 @@ void receive_Message ( INT32 src_ID, char *message,
  		(*error) = ERR_BAD_PARAM;
  		return;
  	}
-
+ 	//If not ready to receive a message, suspend.
  	if ( current_PCB->msg_state != RECEIVE_MSG ){
  		INT32 eRRor;
+ 		current_PCB->msg_state = RECEIVE_MSG;
  		CALL( suspend_Process(-1, &eRRor) );
  	}
 
+ 	//Get any message with dest of currentPCBs ID 
  	if (src_ID == -1){
- 		CALL( msgRecv = get_Message(current_PCB->p_id) );
+ 		CALL( msgRecv = get_outboxMessage(current_PCB->p_id) );
  	}
+ 	//Else get message with source ID
  	else{
- 		CALL( msgRecv = get_Message(src_ID) );
+ 		CALL( msgRecv = get_outboxMessage(src_ID) );
  	}
- 	if (msgRecv != NULL){ 		
- 		*msg_sndLen = msgRecv->Length;
- 		strcpy(message, msgRecv->message);
- 		*sender_ID = msgRecv->src_ID;
- 	}
- 	//Ensure message being sent is >= recenve length
-// 	printf("*****SIZE: %d\n\n", *msg_sndLen);
+
+ 	if (msgRecv == NULL) printf("SOMETHING WENT WAYYYY WRONGGGGG\n\n\n");
+
+ 	CALL( add_to_Inbox(current_PCB, msgRecv) );
+ 	CALL( get_msg_Inbox(message, msg_sndLen, sender_ID) );
+
+ 	//Ensure message being sent is <= receive length
  	if (*msg_sndLen > msg_rcvLen){
- 		debugPrint("IN RECV: MESSAGE SEND LENGTH < MESSAGE RECV LENGTH");
+ 		debugPrint("IN RECV: MESSAGE SEND LENGTH > MESSAGE RECV LENGTH");
  		(*error) = ERR_BAD_PARAM;
  		return;
  	}
- 	//Search for message
+ 	*error = ERR_SUCCESS;
+ 	current_PCB->msg_state = READY_MSG;
 }
+//Get First Inbox Message, set pointer to next message
+void get_msg_Inbox ( char *message, INT32 *msg_sndLen, INT32 *sender_ID){
+	if (current_PCB->Inbox == NULL) return;
 
-MSG_t * check_Inbox ( INT32 src_ID ){
-	ZCALL( lockReady() );
-	MSG_t * msgCheck = current_PCB->Inbox;
+	MSG_t *ptrMsg = current_PCB->Inbox;
 
-	while (msgCheck != NULL){
-		if ( msgCheck->src_ID == src_ID || src_ID == -1 ){
-			ZCALL( unlockReady() );
-			return msgCheck;
-		}		
-		msgCheck = msgCheck->next;
-	}	
-	ZCALL( unlockReady() );
-	return NULL;
+	*msg_sndLen = ptrMsg->Length;
+ 	strcpy(message, ptrMsg->message);
+ 	*sender_ID = ptrMsg->src_ID;
+
+ 	current_PCB->Inbox = ptrMsg->next;
+
+// 	if(current_PCB->Inbox == NULL) current_PCB->msg_state = READY_MSG;
 }
-
-MSG_t * get_Message ( INT32 src_ID ){
+//Find a message on a PCB's outbox and return it
+MSG_t * get_outboxMessage ( INT32 src_ID ){
 	ZCALL( lockReady() );
 	PCB_t * ptrCheck = pidList;
 
@@ -143,7 +170,7 @@ MSG_t * get_Message ( INT32 src_ID ){
 	ZCALL( unlockReady() );
 	return NULL;
 }
-
+/* NOT CURRENTLY USED
 void exchange_Messages ( void ){
 //	ZCALL( lockReady() );
 	PCB_t * ptrCheck = pidList;
@@ -159,7 +186,6 @@ void exchange_Messages ( void ){
 				CALL( sendMSG_to_one(msgCheck) );
 			}
 			msgCheck = msgCheck->next;
-			CALL( remove_first_MSG(ptrCheck->Outbox) );
 		}
 		ptrCheck = ptrCheck->next;
 	}
@@ -178,11 +204,6 @@ void wakeUp_Messages ( void ){
 		ptrCheck = ptrCheck->next;
 	}
 	ZCALL( unlockReady() );
-}
-void remove_first_MSG ( MSG_t * remove ){
-	MSG_t * temp = remove->next;
-	remove = temp;
-	return;
 }
 void sendMSG_to_all ( MSG_t * tosend ){
 	PCB_t * ptrCheck = pidList;
@@ -214,3 +235,4 @@ void sendMSG_to_one ( MSG_t * tosend ){
 		ptrCheck = ptrCheck->next;
 	}
 }
+*/

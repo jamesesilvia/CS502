@@ -15,13 +15,14 @@
 #define			RECEIVE_MSG 			60
 #define			SEND_MSG 				61
 #define			READY_MSG				62
+#define			RECV_SUS_MSG			63
 
 //Max IDs, PCB Name, Priority, MSG Buff Size, MSG Count
 #define			MAX_PIDs				100
 #define			MAX_NAME				16
 #define			MAX_PRIO				200
 #define			MAX_MSG					128
-#define			MAX_MSG_COUNT			8
+#define			MAX_MSG_COUNT			10
 
 //debugPrint, 1 to print, 0 to not print
 #define			DEBUGFLAG 				0
@@ -74,7 +75,6 @@ void 	switch_Savecontext ( PCB_t * PCB );
 void 	add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry );
 void 	add_to_timerQueue ( PCB_t **ptrFirst, PCB_t *entry );
 void 	add_to_eventQueue ( INT32 *device_id, INT32 *status );
-INT32 	add_to_msgQueue ( MSG_t *entry );
 INT32 	add_to_Queue( PCB_t **ptrFirst, PCB_t * entry);
 //Remove Queues
 INT32 	rm_from_readyQueue ( INT32 remove_id );
@@ -125,14 +125,21 @@ void 	eventHandler ( void );
 void 	send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error );
 void 	receive_Message ( INT32 src_ID, char *message,
  			INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID, INT32 *error);
-MSG_t 	*get_Message ( INT32 src_ID );
+MSG_t 	*get_outboxMessage ( INT32 src_ID );
+/* NOT CURRENTLY USED
 void 	exchange_Messages ( void );
-void 	remove_first_MSG ( MSG_t * remove );
 void 	sendMSG_to_all ( MSG_t * tosend );
 void 	sendMSG_to_one ( MSG_t * tosend );
+*/
 MSG_t 	*check_Inbox ( INT32 src_ID );
+/*NOT CURRENTLY USED
 void	 wakeUp_Messages ( void );
+*/
 void 	target_to_Receive ( INT32 dest_ID );
+void 	get_msg_Inbox ( char *message, INT32 *msg_sndLen, INT32 *sender_ID );
+void 	add_to_Inbox ( PCB_t *dest, MSG_t *msgRecv );
+INT32 	add_to_Outbox ( MSG_t *entry );
+void 	send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID );
 //
 
 /*			Global variables			*/

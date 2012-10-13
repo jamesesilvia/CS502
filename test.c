@@ -1023,7 +1023,7 @@ while ( 1 )
 
                 td->target_pid = Z502_REG_3;
                 td->send_length= 20;
-                strcpy( td->msg_sent, "message to #3" );
+                strcpy( td->msg_sent, "message to #2" );
                 SEND_MESSAGE( td->target_pid, td->msg_sent, 
                               td->send_length, &Z502_REG_9 );
 
@@ -1050,7 +1050,7 @@ while ( 1 )
 
                 td->target_pid = Z502_REG_4;
                 td->send_length= 20;
-                strcpy( td->msg_sent, "message to #4" );
+                strcpy( td->msg_sent, "message to #3" );
                 SEND_MESSAGE( td->target_pid, td->msg_sent, 
                               td->send_length, &Z502_REG_9 );
 
@@ -1074,7 +1074,7 @@ while ( 1 )
 
                 td->target_pid = Z502_REG_5;
                 td->send_length= 20;
-                strcpy( td->msg_sent, "message to #5" );
+                strcpy( td->msg_sent, "message to #4" );
                 SEND_MESSAGE( td->target_pid, td->msg_sent, 
                               td->send_length, &Z502_REG_9 );
 
