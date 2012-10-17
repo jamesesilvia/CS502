@@ -64,6 +64,17 @@ INT32	 			inc_pid = 0;
 INT32				total_pid = 0;
 INT32				event_count = 0;
 
+INT32               CREATEpo = 0;
+INT32               TERMINATEpo = 0;
+INT32               SLEEPpo = 0;
+INT32               RESUMEpo = 0;
+INT32               SUSPENDpo = 0;
+INT32               PRIORITYpo = 0;
+INT32               SENDpo = 0;
+INT32               RECEIVEpo = 0;
+INT32               WAKEUPpo = 0;
+INT32               FAULTpo = 0;
+
 /************************************************************************
     INTERRUPT_HANDLER
         When the Z502 gets a hardware interrupt, it transfers control to
@@ -79,7 +90,6 @@ void    interrupt_handler( void ) {
 	INT32			   wokenUp;
 	INT32			   sleeptime;
 
-//	lockISR();	
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id );
     // Set this device as target of our query
@@ -90,11 +100,6 @@ void    interrupt_handler( void ) {
 	CALL( add_to_eventQueue(&device_id, &Status) );	
 	ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
 	return;
-	
-	// if (Status == ERR_BAD_PARAM || Status == ERR_BAD_DEVICE_ID){
-		// ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
-		// return;
-	// }
 }                                       /* End of interrupt_handler */
 
 /************************************************************************
@@ -130,7 +135,7 @@ void    fault_handler( void )
             debugPrint("PRIVILEDGED INSTRUCTION");
             MEM_WRITE(Z502InterruptClear, &Index );
             terminate_Process(-2, &Index);
-        break;
+            break;
     }
 
     printf( "Fault_handler: Found vector type %d with value %d\n",
@@ -165,8 +170,7 @@ void    os_switch_context_complete( void )
     if (call_type == SYSNUM_RECEIVE_MESSAGE){
         //Z502_ARG2.PTR = *message
         //Z502_ARG4.PTR = *Length
-        //Z502_ARG5.PTR = *send_ID        
-        
+        //Z502_ARG5.PTR = *send_ID   
         CALL( get_msg_Inbox((char *)Z502_ARG2.PTR,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR) );
    }
 }                               /* End of os_switch_context_complete */
@@ -204,37 +208,111 @@ void    os_init( void )
         ZCALL( Z502_SWITCH_CONTEXT( SWITCH_CONTEXT_KILL_MODE, &next_context ));
     }                   /* This routine should never return!!           */
 
+
     /*          Based on user input, select test appropriately          */
     if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test0" ) == 0 ) )
         procPTR = test0;
-    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1a" ) == 0 ) )
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1a" ) == 0 ) ){
         procPTR = test1a;
-    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1b" ) == 0 ) )
+        CREATEpo = 1;
+        SLEEPpo = 1;
+        TERMINATEpo = 1;
+    }
+        
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1b" ) == 0 ) ){
         procPTR = test1b;
-    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1c" ) == 0 ) )
-    	procPTR = test1c;
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1d" ) == 0 ) )
-    	procPTR = test1d;
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1e" ) == 0 ) )
-	    procPTR = test1e;
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1f" ) == 0 ) )
-	    procPTR = test1f;
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1g" ) == 0 ) )
+        TERMINATEpo = 1;
+    }
+        
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1c" ) == 0 ) ){
+        procPTR = test1c;
+        CREATEpo = 1;
+        SLEEPpo = 1;
+        WAKEUPpo = 1;
+        TERMINATEpo = 1;
+    }
+    	
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1d" ) == 0 ) ){
+        procPTR = test1d;
+        CREATEpo = 1;
+        SLEEPpo = 1;
+        WAKEUPpo = 1;
+        TERMINATEpo = 1;
+    }    	
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1e" ) == 0 ) ){
+        procPTR = test1e;
+        CREATEpo = 1;
+        SUSPENDpo = 1;
+        RESUMEpo = 1;
+        TERMINATEpo = 1;
+    }
+	    
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1f" ) == 0 ) ){
+        procPTR = test1f;
+        CREATEpo = 1;
+        SUSPENDpo = 1;
+        RESUMEpo = 1;
+        TERMINATEpo = 1;
+    }
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1g" ) == 0 ) ){
 		procPTR = test1g;
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1h" ) == 0 ) )
+        CREATEpo = 1;
+        PRIORITYpo = 1;
+        TERMINATEpo = 1;
+    }
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1h" ) == 0 ) ){
 		procPTR = test1h;
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1i" ) == 0 ) )
+        CREATEpo = 1;
+        PRIORITYpo = 1;
+        TERMINATEpo = 1;
+    }
+	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1i" ) == 0 ) ){
 		procPTR = test1i;
-    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1j" ) == 0 ) )
+        CREATEpo = 1;
+        PRIORITYpo = 1;
+        SENDpo = 1;
+        RECEIVEpo = 1;
+        TERMINATEpo = 1;
+    }
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1j" ) == 0 ) ){
         procPTR = test1j;
-    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1k" ) == 0 ) )
+        CREATEpo = 1;
+        PRIORITYpo = 1;
+        SENDpo = 1;
+        RECEIVEpo = 1;
+        TERMINATEpo = 1;
+    }
+        
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1k" ) == 0 ) ){
         procPTR = test1k;
-    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1l" ) == 0 ) )
+        CREATEpo = 1;
+        FAULTpo = 1;
+        TERMINATEpo = 1;
+    }
+        
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1l" ) == 0 ) ){
         procPTR = test1l;
-    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1m" ) == 0 ) )
+        CREATEpo = 1;
+        PRIORITYpo = 1;
+        SUSPENDpo = 1;
+        RESUMEpo = 1;
+        SENDpo = 1;
+        RECEIVEpo = 1;
+        TERMINATEpo = 1;
+    }
+        
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1m" ) == 0 ) ){
         procPTR = test1m;
+        CREATEpo = 1;
+        PRIORITYpo = 1;
+        SUSPENDpo = 1;
+        RESUMEpo = 1;
+        SENDpo = 1;
+        RECEIVEpo = 1;
+        TERMINATEpo = 1;
+    }
 	else
-    	procPTR = test1j;
+    	Z502_HALT();
 	
     CALL( OS_Create_Process(CALLING_ARGV[1], procPTR, 0, &i, &i, 1) );
 }                                               /* End of os_init       */
@@ -243,20 +321,20 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 		INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH){
 
 	if (priority < 0){
-		printf("BAD PRIORITY");
+        debugPrint("OS CREATE ERROR: ILLEGAL PRIORITY");
 		(*error) = ERR_BAD_PARAM;
 		return -1;
 	}
 	if (pidList != NULL){
 		if(check_name(&pidList, name) == 0){
-			printf("Duplicate Name");
+			debugPrint("OS CREATE ERROR: DUPLICATE NAME");
 			(*error) = ERR_BAD_PARAM;
 			return -1;
 		}	
 	}
 	//MAX_PIDs = 100 in userdefs
 	if (total_pid >= MAX_PIDs){
-		printf("Exceeded max nubmer of PIDs\n");
+		debugPrint("OS CREATE ERROR: EXCEEDED MAX NUMBER OF PIDs");
 		(*error) = ERR_BAD_PARAM;
 		return -1;
 	}	
@@ -282,13 +360,20 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	
 	(*error) = ERR_SUCCESS;
 	(*pid) = PCB->p_id;
+
+    //STATE PRINT OUT
+    if( CREATEpo && DEBUGFLAG){
+        SP_setup( SP_NEW_MODE, inc_pid );
+        SP_print_header();
+        SP_print_line();
+        printReady();
+    }
 	
 	if (SWITCH == 1) CALL( make_switch_Savecontext(PCB, procPTR) );
 	if (SWITCH != 1) CALL( make_context(PCB, procPTR) );
 
-	return 0; 
-											/* End off OS_Create_Process */
-}
+	return 0; 											
+}                                       /* End off OS_Create_Process */
 
 /************************************************************************
     SVC
@@ -334,14 +419,21 @@ void    svc( void ) {
     		CALL( sleepTime = Z502_ARG1.VAL );
     		CALL( currentTime = get_currentTime() );
     		CALL( current_PCB->p_time = ( sleepTime + currentTime ) );
-
     		CALL( readyQueue_to_timerQueue( current_PCB->p_id  ) );
+
+            if ( SLEEPpo && DEBUGFLAG){
+                SP_setup( SP_TARGET_MODE, inc_pid );
+                SP_setup( SP_WAITING_MODE, inc_pid );
+                SP_print_header();
+                SP_print_line();       
+            }
 
     		//Sleep
     		CALL( sleepTime = checkTimer(currentTime) );
-			if (sleepTime > 0) CALL( Start_Timer( sleepTime ) );
-			
-			CALL( switchPCB = get_readyPCB() );
+			if (sleepTime > 0) CALL( Start_Timer( sleepTime ) );			
+
+            //Switch to New PCB or IDLE
+            CALL( switchPCB = get_readyPCB() );
 			if (switchPCB == NULL) ZCALL( EVENT_IDLE() );
     		if (switchPCB != NULL) CALL( switch_Savecontext(switchPCB) );
     		break;
@@ -375,7 +467,7 @@ void    svc( void ) {
     			(INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR) );
     		break;
     	//Receive Message
-    	case SYSNUM_RECEIVE_MESSAGE:
+    	case SYSNUM_RECEIVE_MESSAGE:            
     		CALL( receive_Message((INT32)Z502_ARG1.VAL,(char *)Z502_ARG2.PTR,
     			(INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR,
     			(INT32 *)Z502_ARG6.PTR) );

@@ -14,6 +14,7 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 
 	//New priority exceeds limit
 	if (new_priority > MAX_PRIO){
+		debugPrint("CHANGE PRIORITY ERROR: NEW PRIORITY EXCEEDS MAX");
 		(*error) = ERR_BAD_PARAM;
 		return;
 	}
@@ -24,6 +25,7 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 		CALL( status = updatePriority(current_PCB->p_id, new_priority) );
 		if (status == 1) (*error) = ERR_SUCCESS;
 		else{
+			debugPrint("CHANGE PRIORITY ERROR: UPDATING SELF FAILED");
 			(*error) = ERR_BAD_PARAM;
 			return;
 		}
@@ -33,6 +35,7 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 		CALL( status = updatePriority(process_ID, new_priority) );
 		if (status == 1) (*error) = ERR_SUCCESS;
 		else{
+			debugPrint("CHANGE PRIORITY ERROR: UPDATING ID FAILED");
 			(*error) = ERR_BAD_PARAM;
 			return;
 		}

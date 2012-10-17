@@ -25,7 +25,7 @@
 #define			MAX_MSG_COUNT			10
 
 //debugPrint, 1 to print, 0 to not print
-#define			DEBUGFLAG 				0
+#define			DEBUGFLAG 				1
 
 //Message typedef
 typedef			struct{
@@ -151,3 +151,15 @@ extern 		INT32 			inc_pid;
 extern		INT32			total_pid;
 //extern		volatile 		INT32			ISR;
 extern		INT32			event_count;
+
+/*			State Printouts				*/
+extern		INT32			CREATEpo;
+extern		INT32			TERMINATEpo;
+extern		INT32			SLEEPpo;
+extern		INT32			WAKEUPpo;
+extern		INT32			RESUMEpo;
+extern		INT32			SUSPENDpo;
+extern		INT32			PRIORITYpo;
+extern		INT32			SENDpo;
+extern		INT32			RECEIVEpo;
+extern		INT32			FAULTpo;

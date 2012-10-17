@@ -9,12 +9,13 @@
 void printTimer ( void ){
 	PCB_t * ptrCheck = timerList;
 	while (ptrCheck != NULL){
-		printf("------------------------------\n");
+		printf("\n---------TIMER QUEUE--------\n");
 		printf("Name: %s\t", ptrCheck->p_name);
 		printf("ID: %d\t", ptrCheck->p_id);
 		printf("Time: %d\t", ptrCheck->p_time);
 		printf("Priority: %d\t", ptrCheck->p_priority);
 		printf("State: %d\n", ptrCheck->p_state);
+		printf("------------------------------\n");
 		ptrCheck = ptrCheck->next;
 	}
 	printf("\n");
@@ -22,14 +23,15 @@ void printTimer ( void ){
 }
 void printReady ( void ){
 	PCB_t * ptrCheck = pidList;
-	while (ptrCheck != NULL){
-		printf("------------------------------\n");
+	printf("\n---------READY QUEUE--------\n");
+	while (ptrCheck != NULL){		
 		printf("Name: %s\t", ptrCheck->p_name);
 		printf("ID: %d\t", ptrCheck->p_id);
 		printf("Time: %d\t", ptrCheck->p_time);
 		printf("Priority: %d\t", ptrCheck->p_priority);
 		printf("State: %d\t", ptrCheck->p_state);
 		printf("MSGState: %d\n", ptrCheck->msg_state);
+		printf("------------------------------\n");
 		ptrCheck = ptrCheck->next;
 	}
 	printf("\n");
@@ -48,10 +50,10 @@ void printEvent ( void ){
 }
 void printMessages ( MSG_t * Message ){
 	while(Message != NULL){
-		printf("------------------------------\n");
 		printf("MSG: %s\t", Message->message);
 		printf("SRC ID: %d\t", Message->src_ID);
 		printf("DEST ID: %d\n", Message->dest_ID);
+		printf("------------------------------\n");
 		Message = Message->next;
 	}
 	printf("\n");

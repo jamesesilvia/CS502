@@ -279,13 +279,16 @@ extern int      BaseThread();
 #define         SP_SUSPENDED_MODE       (INT16)8
 #define         SP_SWAPPED_MODE         (INT16)9
 #define         SP_TERMINATED_MODE      (INT16)10
+#define         SP_WAKEUP_MODE          (INT16)11
+#define         SP_SEND_MODE            (INT16)12
+#define         SP_RECEIVE_MODE         (INT16)13
 
 #define         SP_NUMBER_OF_STATES     SP_TERMINATED_MODE-SP_NEW_MODE+1
 #define         SP_MAX_NUMBER_OF_PIDS   (INT16)10
-#define         SP_LENGTH_OF_ACTION     (INT16)8
+#define         SP_LENGTH_OF_ACTION     (INT16)16
 
 
 /*      This string is printed out when requested as the header         */
 
 #define         SP_HEADER_STRING        \
-" Time Target Action  Run New Done       State Populations \n"
+" Time SourceID   Action            Done \n"

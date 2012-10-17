@@ -247,6 +247,15 @@ INT32 wake_timerList ( INT32 currentTime ){
 		if (ptrCheck->p_time <= currentTime){
 			CALL( timerQueue_to_readyQueue(ptrCheck->p_id) );
 			count++;
+
+			//Print out PID is woken up
+			if ( WAKEUPpo && DEBUGFLAG){
+				SP_setup( SP_WAKEUP_MODE, ptrCheck->p_id );
+        		SP_print_header();
+       			SP_print_line();
+//        		printReady();
+			}
+
 		}
 		ptrCheck = ptrCheck->prev;
 	}

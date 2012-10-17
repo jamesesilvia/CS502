@@ -7,14 +7,17 @@
 
 /*
 * Send Message
+*	
+*	This routine places a message string on to the current
+*	processes Outbox. If the destination process has a ready
+*	to receive message state, then the message is placed on to
+*	the destination's Inbox. If the destination is not Ready to
+*	receive, then its message state is set to Ready to receive.
+*
+*	A success or failure is passed to the OS if the message cannot
+*	be sent, and an error occured.
 */
  void send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error ){
-
- 	/* Helper prints for Debugging
- 	printf("\nSENDING MESSAGE TO: %d\n", dest_ID);
- 	printf("WITH A MESSAGE OF: %s\n", message);
- 	printf("OF LENGTH: %d\n\n", msg_Len);
-	*/
 
  	//Check that dest_ID exists
  	INT32 check;
@@ -22,13 +25,13 @@
  	if (dest_ID == -1) check = 1;
  	//Failure
  	if (check == -1){
- 		debugPrint("IN SEND MESSAGE: THAT DEST ID DOES NOT EXIST!");
+ 		debugPrint("ERROR IN SEND MESSAGE: THAT DEST ID DOES NOT EXIST!");
  		(*error) = ERR_BAD_PARAM;
  		return;
  	}
  	//Check the message size
  	if (msg_Len > MAX_MSG){
- 		debugPrint("IN SEND MESSAGE: THE MSG SIZE IS TOO LARGE!");
+ 		debugPrint("ERROR IN SEND MESSAGE: THE MSG SIZE IS TOO LARGE!");
  		(*error) = ERR_BAD_PARAM;
  		return;
  	}
@@ -45,11 +48,21 @@
 	//Add the message to the current PCBs Outbox
 	CALL( check = add_to_Outbox(MSG) );
 	if (check == -1){
-		debugPrint("IN SEND MESSAGE: OUTBOX MAX EXCEEDED");
+		debugPrint("ERROR IN SEND MESSAGE: OUTBOX MAX EXCEEDED");
 		(*error) = ERR_BAD_PARAM;
 		return;
-	}	
+	}
 	else (*error) = ERR_SUCCESS;
+
+	//STATE PRINTOUT FOR SEND
+	if (SENDpo && DEBUGFLAG){
+		SP_setup( SP_TARGET_MODE, current_PCB->p_id );
+		SP_setup( SP_SEND_MODE, current_PCB->p_id);
+		SP_print_header();
+       	SP_print_line();
+       	printf("\nSENDING MESSAGE: ");
+       	printMessages(MSG);
+	}
 
 	current_PCB->msg_state = SEND_MSG;
 
@@ -57,7 +70,8 @@
 	CALL( send_if_dest_Receive(MSG, dest_ID) );
 	CALL( target_to_Receive(dest_ID) );
 }
-
+//Helper function used to send message if the Dest
+//message status is Ready to receive
 void send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID ){
 	PCB_t *dest = pidList;
 	while (dest!=NULL){
@@ -70,6 +84,8 @@ void send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID ){
 		dest = dest->next;
 	}
 }
+//Helper function to sent the destination message state
+//to ready to Receive
 void target_to_Receive ( INT32 dest_ID ){
 	ZCALL( lockReady() );
 	PCB_t * ptrCheck = pidList;
@@ -96,13 +112,13 @@ void receive_Message ( INT32 src_ID, char *message,
 	CALL( check = check_pid_ID(src_ID) );
 	if (src_ID == -1) check = 1;
 	if (check == -1){
- 		debugPrint("IN RECV MESSAGE: THAT SRC ID DOES NOT EXIST!");
+ 		debugPrint("ERROR IN RECV MESSAGE: THAT SRC ID DOES NOT EXIST!");
  		(*error) = ERR_BAD_PARAM;
  		return;
  	}
  	//Check the message size
  	if (msg_rcvLen > MAX_MSG){
- 		debugPrint("IN RECV MESSAGE: THE MSG SIZE IS TOO LARGE!");
+ 		debugPrint("ERROR IN RECV MESSAGE: THE MSG SIZE IS TOO LARGE!");
  		(*error) = ERR_BAD_PARAM;
  		return;
  	}
@@ -122,14 +138,12 @@ void receive_Message ( INT32 src_ID, char *message,
  		CALL( msgRecv = get_outboxMessage(src_ID) );
  	}
 
- 	if (msgRecv == NULL) printf("SOMETHING WENT WAYYYY WRONGGGGG\n\n\n");
-
  	CALL( add_to_Inbox(current_PCB, msgRecv) );
  	CALL( get_msg_Inbox(message, msg_sndLen, sender_ID) );
 
  	//Ensure message being sent is <= receive length
  	if (*msg_sndLen > msg_rcvLen){
- 		debugPrint("IN RECV: MESSAGE SEND LENGTH > MESSAGE RECV LENGTH");
+ 		debugPrint("ERROR IN RECV: MESSAGE SEND LENGTH > MESSAGE RECV LENGTH");
  		(*error) = ERR_BAD_PARAM;
  		return;
  	}
@@ -148,7 +162,14 @@ void get_msg_Inbox ( char *message, INT32 *msg_sndLen, INT32 *sender_ID){
 
  	current_PCB->Inbox = ptrMsg->next;
 
-// 	if(current_PCB->Inbox == NULL) current_PCB->msg_state = READY_MSG;
+ 	if (SENDpo && DEBUGFLAG){
+		SP_setup( SP_TARGET_MODE,current_PCB->p_id );
+		SP_setup( SP_RECEIVE_MODE, current_PCB->p_id);
+		SP_print_header();
+       	SP_print_line();
+       	printf("\nRECEIVED MESSAGE: ");
+       	printMessages(ptrMsg);
+	}
 }
 //Find a message on a PCB's outbox and return it
 MSG_t * get_outboxMessage ( INT32 src_ID ){
@@ -170,69 +191,4 @@ MSG_t * get_outboxMessage ( INT32 src_ID ){
 	ZCALL( unlockReady() );
 	return NULL;
 }
-/* NOT CURRENTLY USED
-void exchange_Messages ( void ){
-//	ZCALL( lockReady() );
-	PCB_t * ptrCheck = pidList;
 
-	//Loop through main list for Outbox messages
-	while (ptrCheck != NULL){
-		MSG_t *msgCheck = ptrCheck->Outbox;
-		while (msgCheck != NULL){
-			if (msgCheck->dest_ID == -1){
-				CALL( sendMSG_to_all(msgCheck) );
-			}
-			else{
-				CALL( sendMSG_to_one(msgCheck) );
-			}
-			msgCheck = msgCheck->next;
-		}
-		ptrCheck = ptrCheck->next;
-	}
-
-}
-void wakeUp_Messages ( void ){
-	ZCALL( lockReady() );
-	PCB_t * ptrCheck = pidList;
-
-	while (ptrCheck != NULL){
-		if (ptrCheck->msg_state == RECEIVE_MSG){
-			if (ptrCheck->p_state == SUSPENDED_STATE){
-				ptrCheck->p_state = READY_STATE;
-			}
-		}
-		ptrCheck = ptrCheck->next;
-	}
-	ZCALL( unlockReady() );
-}
-void sendMSG_to_all ( MSG_t * tosend ){
-	PCB_t * ptrCheck = pidList;
-
-	while (ptrCheck != NULL){
-		if (ptrCheck->p_id != tosend->src_ID ){
-			MSG_t * Inbox = ptrCheck->Inbox;
-			while(Inbox != NULL){
-				Inbox = Inbox->next;
-			}
-			Inbox = tosend;
-			ptrCheck->msg_state = RECEIVE_MSG;
-		}
-		ptrCheck = ptrCheck->next;
-	}
-}
-void sendMSG_to_one ( MSG_t * tosend ){
-	PCB_t * ptrCheck = pidList;
-
-	while (ptrCheck != NULL){
-		if (ptrCheck->p_id == tosend->dest_ID){			
-			MSG_t * Inbox = ptrCheck->Inbox;
-			while(Inbox != NULL){
-				Inbox = Inbox->next;
-			}
-			Inbox = tosend;
-			ptrCheck->msg_state = RECEIVE_MSG;
-		}
-		ptrCheck = ptrCheck->next;
-	}
-}
-*/
