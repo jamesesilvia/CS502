@@ -22,7 +22,8 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 	//if pid -1, UPDATE SELF
 	if ( process_ID == -1 ){
 		//UPDATE SELF, or return error
-		CALL( status = updatePriority(current_PCB->p_id, new_priority) );
+		process_ID = current_PCB->p_id;
+		CALL( status = updatePriority(process_ID, new_priority) );
 		if (status == 1) (*error) = ERR_SUCCESS;
 		else{
 			debugPrint("CHANGE PRIORITY ERROR: UPDATING SELF FAILED");
@@ -40,9 +41,18 @@ void change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error ){
 			return;
 		}
 	}
+
 	ZCALL( lockReady() );
 	CALL( ready_sort() );
 	ZCALL( unlockReady() );
+
+	if (PRIORITYpo && DEBUGFLAG){
+		SP_setup( SP_TARGET_MODE, process_ID );
+		SP_setup( SP_PRIORITY_MODE, new_priority );
+		SP_print_header();
+       	SP_print_line();
+       	printReady();
+	}
 
 	//GET READY PCB TO RUN
 	CALL( switchPCB = get_readyPCB() );

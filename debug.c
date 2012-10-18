@@ -8,11 +8,11 @@
 //Debug
 void printTimer ( void ){
 	PCB_t * ptrCheck = timerList;
-	while (ptrCheck != NULL){
-		printf("\n---------TIMER QUEUE--------\n");
+	printf("\n----------TIMER QUEUE---------\n");
+	while (ptrCheck != NULL){		
 		printf("Name: %s\t", ptrCheck->p_name);
 		printf("ID: %d\t", ptrCheck->p_id);
-		printf("Time: %d\t", ptrCheck->p_time);
+		printf("WakeupTime: %d\t", ptrCheck->p_time);
 		printf("Priority: %d\t", ptrCheck->p_priority);
 		printf("State: %d\n", ptrCheck->p_state);
 		printf("------------------------------\n");
@@ -23,11 +23,11 @@ void printTimer ( void ){
 }
 void printReady ( void ){
 	PCB_t * ptrCheck = pidList;
-	printf("\n---------READY QUEUE--------\n");
+	printf("\n----------READY QUEUE---------\n");
 	while (ptrCheck != NULL){		
 		printf("Name: %s\t", ptrCheck->p_name);
 		printf("ID: %d\t", ptrCheck->p_id);
-		printf("Time: %d\t", ptrCheck->p_time);
+		printf("WakeupTime: %d\t", ptrCheck->p_time);
 		printf("Priority: %d\t", ptrCheck->p_priority);
 		printf("State: %d\t", ptrCheck->p_state);
 		printf("MSGState: %d\n", ptrCheck->msg_state);

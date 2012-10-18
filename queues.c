@@ -64,6 +64,7 @@ INT32 add_to_Outbox ( MSG_t *entry ){
 	return 1;
 }
 void add_to_Inbox ( PCB_t *dest, MSG_t *msgRecv ){
+	if (msgRecv == NULL) return;
 	//Create the new Inbox Message
 	MSG_t *MSG = (MSG_t *)(malloc(sizeof(MSG_t)));
  	MSG->dest_ID = msgRecv->dest_ID;

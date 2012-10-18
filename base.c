@@ -120,6 +120,13 @@ void    fault_handler( void )
     // Now read the status of this device
     MEM_READ(Z502InterruptStatus, &status );
 
+    if( FAULTpo && DEBUGFLAG){
+        SP_setup( SP_FAULT_MODE, current_PCB->p_id );
+        SP_print_header();
+        SP_print_line();
+    }
+       
+
     switch(device_id){
         case(CPU_ERROR):
             debugPrint("CPU ERROR");
@@ -132,7 +139,8 @@ void    fault_handler( void )
             terminate_Process(-2, &Index);
             break;
         case(PRIVILEGED_INSTRUCTION):
-            debugPrint("PRIVILEDGED INSTRUCTION");
+            debugPrint("ERROR: PRIVILEDGED INSTRUCTION");
+            debugPrint("TERMINATE PROCESS AND CHILDREN");
             MEM_WRITE(Z502InterruptClear, &Index );
             terminate_Process(-2, &Index);
             break;
@@ -364,6 +372,7 @@ INT32	OS_Create_Process( char * name, void * procPTR,
     //STATE PRINT OUT
     if( CREATEpo && DEBUGFLAG){
         SP_setup( SP_NEW_MODE, inc_pid );
+        SP_setup( SP_PRIORITY_MODE, priority );
         SP_print_header();
         SP_print_line();
         printReady();
@@ -422,10 +431,11 @@ void    svc( void ) {
     		CALL( readyQueue_to_timerQueue( current_PCB->p_id  ) );
 
             if ( SLEEPpo && DEBUGFLAG){
-                SP_setup( SP_TARGET_MODE, inc_pid );
-                SP_setup( SP_WAITING_MODE, inc_pid );
+                SP_setup( SP_TARGET_MODE, current_PCB->p_id );
+                SP_setup( SP_WAITING_MODE, current_PCB->p_id );
                 SP_print_header();
-                SP_print_line();       
+                SP_print_line();
+                printTimer();       
             }
 
     		//Sleep

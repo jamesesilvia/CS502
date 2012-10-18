@@ -282,6 +282,9 @@ extern int      BaseThread();
 #define         SP_WAKEUP_MODE          (INT16)11
 #define         SP_SEND_MODE            (INT16)12
 #define         SP_RECEIVE_MODE         (INT16)13
+#define         SP_RESUME_MODE          (INT16)23
+#define         SP_PRIORITY_MODE        (INT16)24
+#define         SP_FAULT_MODE           (INT16)25
 
 #define         SP_NUMBER_OF_STATES     SP_TERMINATED_MODE-SP_NEW_MODE+1
 #define         SP_MAX_NUMBER_OF_PIDS   (INT16)10
@@ -291,4 +294,4 @@ extern int      BaseThread();
 /*      This string is printed out when requested as the header         */
 
 #define         SP_HEADER_STRING        \
-" Time SourceID   Action            Done \n"
+" Time   ID         Action      NewPriority       Done \n"

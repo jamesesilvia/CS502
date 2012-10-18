@@ -194,6 +194,7 @@ void suspend_Process ( INT32 process_ID, INT32 *error ){
 		if (SUSPENDpo && DEBUGFLAG){
 			SP_setup( SP_TARGET_MODE, current_PCB->p_id );
 			SP_setup( SP_SUSPENDED_MODE, current_PCB->p_id );
+			SP_print_header();
         	SP_print_line();
 		}
 
@@ -212,7 +213,9 @@ void suspend_Process ( INT32 process_ID, INT32 *error ){
 		if (SUSPENDpo && DEBUGFLAG){
 			SP_setup( SP_TARGET_MODE, process_ID );
 			SP_setup( SP_SUSPENDED_MODE, process_ID );
+			SP_print_header();
         	SP_print_line();
+        	printReady();
 		}
 	}
 }
@@ -272,8 +275,10 @@ void resume_Process ( INT32 process_ID, INT32 *error ){
 				//STATE PRINTOUT
 				if (RESUMEpo && DEBUGFLAG){
 					SP_setup( SP_TARGET_MODE, ptrCheck->p_id );
-					SP_setup( SP_READY_MODE, ptrCheck->p_id );
+					SP_setup( SP_RESUME_MODE, ptrCheck->p_id );
+					SP_print_header();
 	        		SP_print_line();
+	        		printReady();
 				}
 				return;
 			}

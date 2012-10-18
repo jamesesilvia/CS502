@@ -30,6 +30,7 @@
 #endif
 
 INT16           SP_target_pid = -1;
+INT16           SP_priority = -1;
 INT16           SP_pid_states[SP_NUMBER_OF_STATES][SP_MAX_NUMBER_OF_PIDS];
 INT16           SP_number_of_pids[] = { 0, 0, 0, 0, 0, 0, 0 };
 INT32           SP_time = -1;
@@ -135,7 +136,7 @@ void SP_setup( INT16 mode, INT32 data )
         case SP_WAKEUP_MODE:
             SP_setup_action( SP_ACTION_MODE, "WAKEUP" );
             SP_target_pid      = (INT16)data;
-            break;  
+            break;
         case SP_RUNNING_MODE:
             SP_setup_action( SP_ACTION_MODE, "RUNNING" );
             break;     
@@ -145,6 +146,13 @@ void SP_setup( INT16 mode, INT32 data )
         case SP_SUSPENDED_MODE:
             SP_setup_action( SP_ACTION_MODE, "SUSPEND" ); 
             break;
+        case SP_RESUME_MODE:
+            SP_setup_action ( SP_ACTION_MODE, "RESUME" );
+            break;
+        case SP_PRIORITY_MODE:
+            SP_setup_action ( SP_ACTION_MODE, "PRIORITY" );
+            SP_priority      = (INT16)data;
+            break;
         case SP_SWAPPED_MODE:
             SP_setup_action( SP_ACTION_MODE, "SWITCH" );
             break;
@@ -153,6 +161,10 @@ void SP_setup( INT16 mode, INT32 data )
             break;
         case SP_RECEIVE_MODE:
             SP_setup_action( SP_ACTION_MODE, "RECV MSG" );
+            break;
+        case SP_FAULT_MODE:
+            SP_setup_action( SP_ACTION_MODE, "FAULT" );
+            SP_target_pid      = (INT16)data;
             break;
         case SP_TERMINATED_MODE:   
              SP_setup_action( SP_ACTION_MODE, "TERMINATE" );
@@ -230,6 +242,9 @@ void    SP_print_line( void )
     sprintf( temp, "  %8s", SP_action );                 /* Action       */
     (void)strcat( output_line, temp );
 
+    sprintf( temp, "  %8d\t", SP_priority );                 /* Action       */
+    (void)strcat( output_line, temp );
+
     index = SP_RUNNING_MODE - SP_STATE_MODE_START;      /* Running proc.*/
     if ( SP_number_of_pids[ index ] > 0 )
         sprintf( temp, " %3d", SP_pid_states[index][0] );
@@ -279,6 +294,7 @@ void    SP_print_line( void )
     SP_time = -1;
     strcpy( SP_action, "" );
     SP_target_pid = -1;
+    SP_priority = -1;
     for ( index = 0 ; index <= SP_TERMINATED_MODE - SP_NEW_MODE; index++ )
         SP_number_of_pids[ index ] = 0;
 
