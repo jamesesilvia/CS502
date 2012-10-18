@@ -25,7 +25,7 @@
 #define			MAX_MSG_COUNT			10
 
 //debugPrint, 1 to print, 0 to not print
-#define			DEBUGFLAG 				1
+#define			DEBUGFLAG 				0
 
 //Message typedef
 typedef			struct{

@@ -144,7 +144,9 @@ void terminate_Process ( INT32 process_ID, INT32 *error ){
 void rm_children ( PCB_t ** ptrFirst, INT32 process_ID ){
 	PCB_t * ptrCheck = *ptrFirst;
 
-	SP_print_header();
+	if (TERMINATEpo && DEBUGFLAG){
+		SP_print_header();
+	}
 	while (ptrCheck != NULL){
 		if ( ptrCheck->p_parent == process_ID ){
 			CALL( rm_from_readyQueue( ptrCheck->p_id ) );
