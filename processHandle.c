@@ -1,3 +1,13 @@
+/*
+*	This file contains all routines that handles the processes
+*
+*	GET PROCESS ID
+*	TERMINATE PROCESS
+*	SUSPEND PROCESS
+*	RESUME PROCESS
+*
+*/
+
 #include             "global.h"
 #include             "syscalls.h"
 #include             "protos.h"

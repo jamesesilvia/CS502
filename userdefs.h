@@ -1,3 +1,11 @@
+/* 
+*	This header file contains all user generated functions
+*	as well as global variables used. Including all the states
+*	for the process and messaging. As well as the maximum
+*	values for various counts
+*
+*/
+
 #include        "stdio.h"
 #include		"stdlib.h"
 
@@ -27,7 +35,7 @@
 //debugPrint, 1 to print, 0 to not print
 #define			DEBUGFLAG 				0
 
-//Message typedef
+//Message TYPEDEF
 typedef			struct{
 	INT32					dest_ID;
 	INT32					src_ID;
@@ -36,7 +44,7 @@ typedef			struct{
 	void					*next;
 	} MSG_t;
 
-//PCB typedef
+//PCB TYPEDEF
 typedef         struct {
 	char					p_name[MAX_NAME+1];
 	INT32					p_id;
@@ -53,7 +61,7 @@ typedef         struct {
 	void					*Outbox;
     } PCB_t;
 
-//Event typedef
+//Event TYPEDEF
 typedef			struct {
 	INT32					device_ID;
 	INT32					Status;

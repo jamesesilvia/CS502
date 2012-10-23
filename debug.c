@@ -1,3 +1,20 @@
+/* 	This file includes several functions that were used 
+*	during debugging, particulary during the use of gdb.
+*	In order to track queues and ensure proper management,
+*	several functions were created to print out the full list.
+*
+*	This follows suit for any of the messages added to a PCB's
+*	Inbox or Outbox.
+*
+*	These functions are included in many of the state print outs
+*	as they do a good job of showing state changes and queue
+*	management.
+*
+*	Also, the debugPrint function that depends on the DEBUGFLAG
+*	in userdefs is built here.
+*
+*/
+
 #include             "global.h"
 #include             "syscalls.h"
 #include             "protos.h"
@@ -5,7 +22,7 @@
 
 #include			"userdefs.h"
 
-//Debug
+//Print the Timer Queue
 void printTimer ( void ){
 	PCB_t * ptrCheck = timerList;
 	printf("\n----------TIMER QUEUE---------\n");
@@ -21,6 +38,7 @@ void printTimer ( void ){
 	printf("\n");
 	return;
 }
+//Print the Ready Queue
 void printReady ( void ){
 	PCB_t * ptrCheck = pidList;
 	printf("\n----------READY QUEUE---------\n");
@@ -37,6 +55,7 @@ void printReady ( void ){
 	printf("\n");
 	return;
 }
+//Print the Event Queue
 void printEvent ( void ){
 	EVENT_t * ptrCheck = eventList;
 	while (ptrCheck != NULL){
@@ -48,6 +67,7 @@ void printEvent ( void ){
 	printf("\n");
 	return;
 }
+//Print Messages from either Inbox or Outbox
 void printMessages ( MSG_t * Message ){
 	while(Message != NULL){
 		printf("MSG: %s\t", Message->message);
@@ -59,6 +79,8 @@ void printMessages ( MSG_t * Message ){
 	printf("\n");
 	return;
 }
+// Helper function used to only print to screen
+//	if the DEBUGFLAG is set in the userdefs.h file.
 void debugPrint ( char * toprint ){
 	if (DEBUGFLAG){
 		printf("%s\n", toprint);

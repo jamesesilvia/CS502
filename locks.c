@@ -1,8 +1,7 @@
 /*
- * This file contains the functions used for spin locks
+ * This file contains the functions used for locks
  * as well as all relevant global declarations
  *
- * Spin locks will be used on the ready queue, and timer queue
  */
 
 #include             "global.h"
@@ -58,14 +57,5 @@ void unlockEvent ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 3, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
-
-//Ensure ISR does not interfere with SVC
-// void lockISR ( void ){
-	// while (ISR) {}
-	// ISR = 1;
-// }
-// void unlockISR ( void ){
-	// ISR = 0;
-// }
 
 

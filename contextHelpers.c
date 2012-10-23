@@ -1,9 +1,18 @@
+/*  This file contains all context creation, switching,
+*   and killing of contexts. New functions were created
+*   for easier handling of the context calls.
+*
+*   This is where the current_PCB global variable is set,
+*   to the context that is being switched to.
+*
+*   The function names are straight forward.
+*/ 
+
 #include             "global.h"
 #include             "syscalls.h"
 #include             "protos.h"
 #include             "string.h"
 
-// Added 9/4/2012
 #include			"userdefs.h"
 
 void make_context ( PCB_t * PCB, void *procPTR ){
@@ -11,7 +20,7 @@ void make_context ( PCB_t * PCB, void *procPTR ){
 }
 void make_switch_Savecontext ( PCB_t * PCB, void *procPTR ){
 	current_PCB = PCB;
-
+    // State Printer
 	if( CREATEpo && DEBUGFLAG){
         SP_setup( SP_SWAPPED_MODE, inc_pid );
         SP_setup( SP_TARGET_MODE, current_PCB->p_id );	
@@ -25,7 +34,7 @@ void make_switch_Savecontext ( PCB_t * PCB, void *procPTR ){
 }
 void make_switch_Killcontext ( PCB_t * PCB, void *procPTR ){
 	current_PCB = PCB;
-
+    // State Printer
 	if( CREATEpo && DEBUGFLAG){
         SP_setup( SP_SWAPPED_MODE, inc_pid );
         SP_setup( SP_TARGET_MODE, current_PCB->p_id );
@@ -39,7 +48,7 @@ void make_switch_Killcontext ( PCB_t * PCB, void *procPTR ){
 }
 void switch_Killcontext ( PCB_t * PCB ){
 	current_PCB = PCB;
-
+    // State Printer
 	if( CREATEpo && DEBUGFLAG){
         SP_setup( SP_SWAPPED_MODE, inc_pid );
         SP_setup( SP_TARGET_MODE, current_PCB->p_id );
@@ -52,7 +61,7 @@ void switch_Killcontext ( PCB_t * PCB ){
 }
 void switch_Savecontext ( PCB_t * PCB ){
 	current_PCB = PCB;
-
+    // State Printer
 	if( CREATEpo && DEBUGFLAG){
         SP_setup( SP_SWAPPED_MODE, inc_pid );
         SP_setup( SP_TARGET_MODE, current_PCB->p_id );

@@ -1,3 +1,10 @@
+/*
+*	This file contains all routines that handles the messages
+*
+*	SEND MESSAGE
+*	RECEIVE MESSAGE
+*
+*/
 #include			"global.h"
 #include			"syscalls.h"
 #include			"protos.h"
@@ -16,6 +23,7 @@
 *
 *	A success or failure is passed to the OS if the message cannot
 *	be sent, and an error occured.
+*
 */
  void send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error ){
 
@@ -101,6 +109,21 @@ void target_to_Receive ( INT32 dest_ID ){
 }
 /*
 * Receive Message
+*
+*	This function checks the outbox of processes for a 
+*	message that matches its process ID. It places the
+*	received message on to its Inbox, and checks the Inbox
+*	for the message.
+*
+*	These steps were split out so that the message could also
+*	be checked in os_switch_context_complete.
+*
+*	If receive_Message is called and it's message state is not
+*	Ready to Receive, then it suspends itself until a message
+*	is sent to it. In this situation, when the process resumes,
+*	it can check its inbox in os_switch_context_complete, and 
+*	pass the message to the OS.
+*
 */
 void receive_Message ( INT32 src_ID, char *message, 
 	INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID,  INT32 *error){
@@ -151,6 +174,8 @@ void receive_Message ( INT32 src_ID, char *message,
  	current_PCB->msg_state = READY_MSG;
 }
 //Get First Inbox Message, set pointer to next message
+//Pass result to the Operating System to be checked
+// ALSO USED IN OS_SWITCH_CONTEXT_COMPLETE
 void get_msg_Inbox ( char *message, INT32 *msg_sndLen, INT32 *sender_ID){
 	if (current_PCB->Inbox == NULL) return;
 
@@ -172,6 +197,7 @@ void get_msg_Inbox ( char *message, INT32 *msg_sndLen, INT32 *sender_ID){
 	}
 }
 //Find a message on a PCB's outbox and return it
+//Return NULL is no message exists
 MSG_t * get_outboxMessage ( INT32 src_ID ){
 	ZCALL( lockReady() );
 	PCB_t * ptrCheck = pidList;

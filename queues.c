@@ -1,3 +1,30 @@
+/*
+*	This file handles all the queues
+*
+*	READY QUEUE
+*	TIMER QUEUE
+*	EVENT QUEUE
+*	MESSAGE LIST
+*
+*	ADDING to Queues
+*	REMOVING from Queues
+*	ADDING to Message List
+*	REMOVING from Message List
+*	
+*	MOVING from Ready to Timer Queue
+*	MOVING from Timer to Ready Queue
+*
+*	This file also includes getting the Ready PCB with the
+*	lowest priority
+*		PCB_t * get_readyPCB( void )
+*
+*	As well as waking up items from the Timer Queue
+*	and moving them to the readey Queue.\
+*		INT32 wake_timerList ( INT32 currentTime  )
+*
+*	checkTimer retrieves the sleepTime from Timer Queue
+*/
+
 #include             "global.h"
 #include             "syscalls.h"
 #include             "protos.h"
@@ -7,33 +34,44 @@
 
 /*
  * Adding to Queues
+ *
+ *	Used to add to Queues
+ *	The function names are self-explanatory
  */
 void add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry ){
 	total_pid++;
+	//Set to Ready State
 	entry->p_state = READY_STATE;
+	//Add to Ready Queue
 	ZCALL( lockReady() );
 	CALL( add_to_Queue(ptrFirst, entry) );
+	//Sort the Ready Queue
 	CALL( ready_sort() );
 	ZCALL( unlockReady() );
 }
 void add_to_timerQueue( PCB_t **ptrFirst, PCB_t *entry ){
+	//Set space for new timer PCB
 	PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
 	memcpy(PCB, entry, sizeof(PCB_t));
 	PCB->next = NULL;
 	PCB->prev = NULL;
 	
+	//Add and sort Timer Queue based on wakeUp Time
 	ZCALL( lockTimer() );
 	CALL( add_to_Queue(ptrFirst, PCB) );
 	CALL( timer_sort() );
 	ZCALL( unlockTimer() );
 }
 void add_to_eventQueue ( INT32 *device_id, INT32 *status ){
+	//Set space for the new event PCB
 	EVENT_t *event = (EVENT_t *)(malloc(sizeof(EVENT_t)));
 	event->device_ID = *device_id;
 	event->Status = *status;
 	event->next = NULL;
 	
+	// Increase global event_count
 	event_count++;
+	// Different typedef, could not use default add_to_Queue
 	EVENT_t * ptrCheck = eventList;
 	if (ptrCheck == NULL){
 		eventList = event;
@@ -45,6 +83,8 @@ void add_to_eventQueue ( INT32 *device_id, INT32 *status ){
 	ptrCheck->next = event;
 }
 INT32 add_to_Outbox ( MSG_t *entry ){
+	//Different typedef, could not use default add_to_Queue
+
 	(current_PCB->msg_count)++;
 	if(current_PCB->msg_count > MAX_MSG_COUNT){
 		return -1;
@@ -64,6 +104,8 @@ INT32 add_to_Outbox ( MSG_t *entry ){
 	return 1;
 }
 void add_to_Inbox ( PCB_t *dest, MSG_t *msgRecv ){
+	//Different typedef, could not use default add_to_Queue
+
 	if (msgRecv == NULL) return;
 	//Create the new Inbox Message
 	MSG_t *MSG = (MSG_t *)(malloc(sizeof(MSG_t)));
@@ -105,12 +147,16 @@ INT32 add_to_Queue( PCB_t **ptrFirst, PCB_t * entry ){
 }
 /*
  * Removing from Queues
+ *
+ *	Used to remove from all queues
+ *	The function names are self-explanatory
  */
 INT32 rm_from_readyQueue ( INT32 remove_id ){
 	PCB_t *temp;
 	total_pid--;
 	ZCALL( lockReady() );
 
+	//Use default rm_from_Queue for PCB_t
 	CALL( temp = rm_from_Queue(&pidList, remove_id) );
 	if ( (temp == NULL) && (total_pid != 0) ){
 		total_pid++;
@@ -125,10 +171,12 @@ INT32 rm_from_readyQueue ( INT32 remove_id ){
 void rm_from_timerQueue (  PCB_t **ptrFirst, INT32 remove_id ){
 	PCB_t *temp;
 	
+	//Use default rm_from_Queue for PCB_t
 	ZCALL( lockTimer() );
 	CALL( temp = rm_from_Queue(ptrFirst, remove_id) );
 	ZCALL( unlockTimer() );
 }
+//Default remove from Queue function used for Ready and Timer Queue
 PCB_t *rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id ){
 	PCB_t * ptrDel = *ptrFirst;
 	PCB_t * ptrPrev = NULL;
@@ -159,6 +207,7 @@ PCB_t *rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id ){
 	//No ID in PCB List
 	return NULL;
 }
+//Remove item from the eventQueue based on ID
 void rm_from_eventQueue ( INT32 remove_id ){
 	EVENT_t *ptrDel = eventList;
 	EVENT_t *ptrPrev = NULL;
@@ -188,6 +237,13 @@ void rm_from_eventQueue ( INT32 remove_id ){
 }
 /*
  * Moving Queues
+ *
+ *	These functions take advantange of the above functions,
+ *	but allowed me to create functions that moved processes
+ *	from one queue to another.
+ *
+ *		Ready Queue to Timer Queue
+ *		Timer Queue to Ready Queue
  */
 void readyQueue_to_timerQueue( INT32 remove_id ){
 	PCB_t *temp;
@@ -211,6 +267,10 @@ void timerQueue_to_readyQueue( INT32 remove_id ){
 }
 /*
 * Get the ready PCB with lowest priority
+*
+*	Cycle through the Ready List and find the
+*	PCB ready to run with the lowest priority.
+*
 */
 PCB_t * get_readyPCB( void ){
 	
@@ -222,6 +282,7 @@ PCB_t * get_readyPCB( void ){
 	while (ptrCheck != NULL){
 		if (ptrCheck->p_state == READY_STATE){
 			if (ptrReturn==NULL) ptrReturn = ptrCheck;
+			//If next PCB has lower or == priority, its the new ready PCB
 			else if (ptrReturn->p_priority >= ptrCheck->p_priority){
 				ptrReturn = ptrCheck;
 			}		
@@ -232,7 +293,14 @@ PCB_t * get_readyPCB( void ){
 	ZCALL( unlockReady() );
 	return ptrReturn;
 }
-//Timer Handling
+/*
+* Wake up items from the Timer List
+*
+*	This function will wake up all items on the Timer List
+*	by moving them to the Ready Queue. The processes are wokenUp
+*	based on the currentTime and their wakeUp time in the PCB
+*
+*/
 INT32 wake_timerList ( INT32 currentTime ){
 	ZCALL( lockTimer() );
 	PCB_t 	*ptrCheck = timerList;
@@ -249,12 +317,11 @@ INT32 wake_timerList ( INT32 currentTime ){
 			CALL( timerQueue_to_readyQueue(ptrCheck->p_id) );
 			count++;
 
-			//Print out PID is woken up
+			//State Printout
 			if ( WAKEUPpo && DEBUGFLAG){
 				SP_setup( SP_WAKEUP_MODE, ptrCheck->p_id );
         		SP_print_header();
        			SP_print_line();
-//        		printReady();
 			}
 
 		}
@@ -263,7 +330,14 @@ INT32 wake_timerList ( INT32 currentTime ){
 	ZCALL( unlockTimer() );
 	return count;
 }
-//Gets sleeptime from timerList
+/* 
+* Get sleepTime from Timer Queue
+*
+*	Returns the difference between the
+*	smallest wakeUp time, and the currentTime.
+*	
+*	This value is used to restart the Timer
+*/
 INT32 checkTimer ( INT32 currentTime ){
 	ZCALL( lockTimer() );
 
@@ -277,7 +351,8 @@ INT32 checkTimer ( INT32 currentTime ){
 	unlockTimer();
 	return (ptrCheck->p_time - currentTime);
 }
-//check if ID exists in pidList
+// Check if ID exists in pidList
+// Return -1 id ID does not exist
 check_pid_ID ( INT32 check_ID ){
 	PCB_t 	*ptrCheck = pidList;
 
