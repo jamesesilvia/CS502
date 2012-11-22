@@ -120,7 +120,7 @@ void    fault_handler( void )
     MEM_READ(Z502InterruptStatus, &status );
 
     //State PrintOut
-    if( FAULTpo && DEBUGFLAG){
+   if( FAULTpo && DEBUGFLAG){
         SP_setup( SP_FAULT_MODE, current_PCB->p_id );
         SP_print_header();
         SP_print_line();
@@ -131,11 +131,18 @@ void    fault_handler( void )
     switch(device_id){
         case(CPU_ERROR):
             debugPrint("CPU ERROR");
+            debugPrint("TERMINATE PROCESS AND CHILDREN");
             MEM_WRITE(Z502InterruptClear, &Index );
             terminate_Process(-2, &Index);
             break;
         case(INVALID_MEMORY):
+            if (status >0){
+                Z502_PAGE_TBL_ADDR = &(current_PCB->pageTable[status]);
+                Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
+                break;
+            }
             debugPrint("INVALID MEMORY");
+            debugPrint("TERMINATE PROCESS AND CHILDREN");
             MEM_WRITE(Z502InterruptClear, &Index );
             terminate_Process(-2, &Index);
             break;
@@ -168,8 +175,10 @@ void    os_switch_context_complete( void )
     INT16               call_type;
     MSG_t*              Message;
 
-    call_type = (INT16)SYS_CALL_CALL_TYPE;
+    Z502_PAGE_TBL_LENGTH = 1024;
+    Z502_PAGE_TBL_ADDR = current_PCB->pageTable;
 
+    call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print == TRUE )
     {
         printf( "os_switch_context_complete  called before user code.\n");
@@ -321,6 +330,14 @@ void    os_init( void )
         RECEIVEpo = 1;
         TERMINATEpo = 1;
     }
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2a" ) == 0 ) ){
+        procPTR = test2a;
+        TERMINATEpo = 1;
+    }
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2b" ) == 0 ) ){
+        procPTR = test2b;
+        TERMINATEpo = 1;
+    }
 	else{
         printf("NO TEST SELECTED, HALT!!!");
         Z502_HALT();
@@ -378,6 +395,11 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	PCB->prev = NULL;
     PCB->msg_state = READY_MSG;
 	PCB->msg_count = 0;
+    
+    memset(PCB->pageTable, 0, VIRTUAL_MEM_PGS+1);
+    Z502_PAGE_TBL_LENGTH = 1024;
+    Z502_PAGE_TBL_ADDR = PCB->pageTable;
+    Z502_PAGE_TBL_ADDR[0] |= PTBL_VALID_BIT;
 
 	//If there is a process currently running (not first PCB)
     //Set the new PCB's parent to the running process
@@ -513,6 +535,9 @@ void    svc( void ) {
     			(INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR,
     			(INT32 *)Z502_ARG6.PTR) );
     		break;
+        case SYSNUM_MEM_READ:
+            printf("\n**********SYSNUM MEM READ\n");
+            break;
         //HALT IF CALL TYPE NOT RECOGNIZED
 		default:
     		printf("ERROR! call_type not recognized!\n");

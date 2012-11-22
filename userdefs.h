@@ -33,7 +33,7 @@
 #define			MAX_MSG_COUNT			10
 
 //debugPrint, 1 to print, 0 to not print
-#define			DEBUGFLAG 				0
+#define			DEBUGFLAG 				1
 
 //Message TYPEDEF
 typedef			struct{
@@ -54,6 +54,7 @@ typedef         struct {
 	INT32					p_time;
 	INT32					msg_state;
 	INT32					msg_count;
+	UINT16					pageTable[VIRTUAL_MEM_PGS];
 	void					*context;
 	void					*next;
 	void					*prev;
@@ -171,3 +172,5 @@ extern		INT32			PRIORITYpo;
 extern		INT32			SENDpo;
 extern		INT32			RECEIVEpo;
 extern		INT32			FAULTpo;
+
+
