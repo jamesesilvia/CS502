@@ -69,6 +69,15 @@ typedef			struct {
 	void					*next;
 	} EVENT_t;
 
+//FrameTable TYPEDEF
+typedef 		struct {
+	INT32					logical;
+	INT32					frame;
+	INT16					validBit;
+	INT32					refTime;
+	void					*next;
+	} FRAMETABLE_t;
+
 /*			FUNCTION CALLS				*/
 
 //Create Process
@@ -158,6 +167,7 @@ extern		PCB_t			*timerList;
 extern		EVENT_t			*eventList;
 extern 		INT32 			inc_pid;
 extern		INT32			total_pid;
+extern		FRAMETABLE_t 	*pageList;
 //extern		volatile 		INT32			ISR;
 extern		INT32			event_count;
 

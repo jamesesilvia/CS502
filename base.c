@@ -52,6 +52,8 @@ PCB_t		     	*timerList = NULL;
 PCB_t				*current_PCB = NULL;
 EVENT_t		     	*eventList = NULL;
 
+FRAMETABLE_t        *pageList = NULL;
+
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
                             "get_pid  ", "create   ", "term_proc", 
@@ -135,6 +137,12 @@ void    fault_handler( void )
             MEM_WRITE(Z502InterruptClear, &Index );
             terminate_Process(-2, &Index);
             break;
+        case(PRIVILEGED_INSTRUCTION):
+            debugPrint("ERROR: PRIVILEDGED INSTRUCTION");
+            debugPrint("TERMINATE PROCESS AND CHILDREN");
+            MEM_WRITE(Z502InterruptClear, &Index );
+            terminate_Process(-2, &Index);
+            break;
         case(INVALID_MEMORY):
             if (status >0){
                 Z502_PAGE_TBL_ADDR = &(current_PCB->pageTable[status]);
@@ -142,12 +150,6 @@ void    fault_handler( void )
                 break;
             }
             debugPrint("INVALID MEMORY");
-            debugPrint("TERMINATE PROCESS AND CHILDREN");
-            MEM_WRITE(Z502InterruptClear, &Index );
-            terminate_Process(-2, &Index);
-            break;
-        case(PRIVILEGED_INSTRUCTION):
-            debugPrint("ERROR: PRIVILEDGED INSTRUCTION");
             debugPrint("TERMINATE PROCESS AND CHILDREN");
             MEM_WRITE(Z502InterruptClear, &Index );
             terminate_Process(-2, &Index);
@@ -341,6 +343,27 @@ void    os_init( void )
 	else{
         printf("NO TEST SELECTED, HALT!!!");
         Z502_HALT();
+    }
+
+    //Initialize Page Table
+    INT32 count = 0;
+    while (count < PHYS_MEM_PGS-1){        
+        FRAMETABLE_t *Table = (FRAMETABLE_t *)(malloc(sizeof(FRAMETABLE_t)));
+        Table->logical = -1;
+        Table->frame = -1;
+        Table->validBit = -1;
+        Table->refTime = -1;
+        Table->next = NULL;     
+        if (pageList == NULL){
+            pageList = Table;
+        }
+        else{
+            while (pageList->next != NULL){
+                pageList = pageList->next;
+            }
+            pageList->next = Table;
+        }
+        count++;
     }
     	
 	// Create a new process, and switch to it.
