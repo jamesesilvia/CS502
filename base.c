@@ -113,6 +113,11 @@ void    fault_handler( void )
     INT32       device_id;
     INT32       status;
     INT32       Index = 0;
+    INT32       frame = -1;
+    INT16       call_type;
+
+    call_type = (INT16)SYS_CALL_CALL_TYPE;
+
 
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id );
@@ -134,29 +139,39 @@ void    fault_handler( void )
         case(CPU_ERROR):
             debugPrint("CPU ERROR");
             debugPrint("TERMINATE PROCESS AND CHILDREN");
-            MEM_WRITE(Z502InterruptClear, &Index );
             terminate_Process(-2, &Index);
+            MEM_WRITE(Z502InterruptClear, &Index );
             break;
         case(PRIVILEGED_INSTRUCTION):
             debugPrint("ERROR: PRIVILEDGED INSTRUCTION");
-            debugPrint("TERMINATE PROCESS AND CHILDREN");
-            MEM_WRITE(Z502InterruptClear, &Index );
+            debugPrint("TERMINATE PROCESS AND CHILDREN");            
             terminate_Process(-2, &Index);
+            MEM_WRITE(Z502InterruptClear, &Index );
             break;
         case(INVALID_MEMORY):
-            if (status >0){
-		//Check memory request
-		check_pageSize( status );
-		manage_Table( current_PCB->p_id, current_PCB->pageTable[status] );
-		Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
-                Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
-                break;
+            //Check pageSize request
+            printTable();
+            CALL( check_pageSize( status ) );
+            CALL( frame = get_emptyFrame( status ) );
+//            manage_Table( current_PCB->p_id, current_PCB->pageTable[status] );
+            Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
+            Z502_PAGE_TBL_ADDR[status] = frame;
+            Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
+            //Based on Call Type
+            //MEMREAD or MEMWRITE
+            if( call_type == SYSNUM_MEM_READ ){
+                ZCALL( MEM_READ( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
             }
+            else if( call_type == SYSNUM_MEM_WRITE ){
+                ZCALL( MEM_WRITE( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
+            }
+            break;
+            /*            
             debugPrint("INVALID MEMORY");
             debugPrint("TERMINATE PROCESS AND CHILDREN");
             MEM_WRITE(Z502InterruptClear, &Index );
             terminate_Process(-2, &Index);
-            break;
+            break; */
     }
 
     printf( "Fault_handler: Found vector type %d with value %d\n",
@@ -196,7 +211,16 @@ void    os_switch_context_complete( void )
         //Z502_ARG2.PTR = *message
         //Z502_ARG4.PTR = *Length
         //Z502_ARG5.PTR = *send_ID   
-        CALL( get_msg_Inbox((char *)Z502_ARG2.PTR,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR) );
+        CALL( get_msg_Inbox((char *)Z502_ARG2.PTR,(INT32 *)Z502_ARG4.PTR,
+            (INT32 *)Z502_ARG5.PTR) );
+   }
+   if (call_type == SYSNUM_DISK_WRITE){
+        CALL( write_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL,
+                (char *)Z502_ARG3.PTR) );
+   }
+   if (call_type == SYSNUM_DISK_READ){
+        CALL( read_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL, 
+                (char *)Z502_ARG3.PTR) );
    }
 }                               /* End of os_switch_context_complete */
 
@@ -343,32 +367,38 @@ void    os_init( void )
         procPTR = test2b;
         TERMINATEpo = 1;
     }
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2c" ) == 0 ) ){
+        procPTR = test2c;
+        TERMINATEpo = 1;
+    }
 	else{
         printf("NO TEST SELECTED, HALT!!!");
         Z502_HALT();
     }
 
     //Initialize Page Table
-    INT32 count = 0;
-    while (count < PHYS_MEM_PGS-1){        
+    INT32 frame = 0;
+    while (frame <= PHYS_MEM_PGS-1){ 
         FRAMETABLE_t *Table = (FRAMETABLE_t *)(malloc(sizeof(FRAMETABLE_t)));
-	Table->PID = -1;
-        Table->frame = -1;
-        Table->validBit = -1;
+        Table->p_id = -1;
+        Table->page = -1;
+        Table->frame = frame;
         Table->refTime = -1;
-        Table->next = NULL;     
-        if (pageList == NULL){
+        Table->next = NULL;
+
+        FRAMETABLE_t * ptrCheck = pageList;     
+        if (ptrCheck == NULL){
             pageList = Table;
         }
         else{
-            while (pageList->next != NULL){
-                pageList = pageList->next;
+            while (ptrCheck->next != NULL){
+                ptrCheck = ptrCheck->next;
             }
-            pageList->next = Table;
+            ptrCheck->next = Table;
         }
-        count++;
+        frame++;
     }
-    	
+    
 	// Create a new process, and switch to it.
     CALL( OS_Create_Process(CALLING_ARGV[1], procPTR, 0, &i, &i, 1) );
 }                                               /* End of os_init       */
@@ -561,8 +591,13 @@ void    svc( void ) {
     			(INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR,
     			(INT32 *)Z502_ARG6.PTR) );
     		break;
-        case SYSNUM_MEM_READ:
-            printf("\n**********SYSNUM MEM READ\n");
+        case SYSNUM_DISK_READ:
+            CALL( read_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL, 
+                (char *)Z502_ARG3.PTR) );
+            break;
+        case SYSNUM_DISK_WRITE:
+            CALL( write_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL,
+                (char *)Z502_ARG3.PTR) );
             break;
         //HALT IF CALL TYPE NOT RECOGNIZED
 		default:

@@ -82,15 +82,17 @@ void printMessages ( MSG_t * Message ){
 //Print Table Manager
 void printTable( void ){
 	FRAMETABLE_t * ptrCheck = pageList;
-	printf("\n----------TABLE MANAGE QUEUE---------\n");		
+	printf("\n------------------FRAME TABLE QUEUE-----------------\n");		
 	while (ptrCheck != NULL){
-		if (ptrCheck->PID != -1){
-			printf("------------------------------\n");
-			printf("ID: %d\t", ptrCheck->PID);
-			printf("Time: %d\n", ptrCheck->refTime);
+		if( ptrCheck->page != -1){
+			printf("ID: %d\t", ptrCheck->p_id);
+			printf("Frame: %d\t", ptrCheck->frame);
+			printf("Page: %d   \t", ptrCheck->page);
+			printf("Time: %d\n", ptrCheck->refTime);			
 		}
 		ptrCheck = ptrCheck->next;
 	}
+	printf("----------------------------------------------------\n");
 }
 // Helper function used to only print to screen
 //	if the DEBUGFLAG is set in the userdefs.h file.

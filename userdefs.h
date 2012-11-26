@@ -71,10 +71,9 @@ typedef			struct {
 
 //FrameTable TYPEDEF
 typedef 		struct {
-	INT32					PID;
-	UINT16					frame;
-	INT16					validBit;
-	INT16					inMemory;
+	INT32					p_id;
+	INT32					page;
+	INT32					frame;
 	INT32					refTime;
 	void					*next;
 	} FRAMETABLE_t;
@@ -162,7 +161,10 @@ INT32 	add_to_Outbox ( MSG_t *entry );
 void 	send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID );
 //Page Handlers
 void	check_pageSize( INT32 pageSize );
-INT32	manage_Table( INT32 ID, UINT16 frame);
+INT32	get_emptyFrame( INT32 pageRequest );
+//DISKS
+void 	write_Disk( INT32 disk_id, INT32 sector, char *DATA );
+void 	read_Disk( INT32 disk_id, INT32 sector, char *DATA );
 
 /*			Global variables			*/
 extern 		PCB_t 			*current_PCB;
