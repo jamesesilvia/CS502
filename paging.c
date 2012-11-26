@@ -35,7 +35,7 @@ INT32 get_emptyFrame( INT32 pageRequest ){
 void check_pageSize( INT32 pageSize ){
 	INT32	Index = 0;
 
-	if (pageSize > 0 && pageSize <= MAXPGSIZE-1){
+	if (pageSize >= 0 && pageSize <= MAXPGSIZE-1){
 		return;
 	}
 	else{

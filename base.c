@@ -118,7 +118,6 @@ void    fault_handler( void )
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
 
-
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id );
     // Set this device as target of our query
@@ -153,8 +152,8 @@ void    fault_handler( void )
             printTable();
             CALL( check_pageSize( status ) );
             CALL( frame = get_emptyFrame( status ) );
-//            manage_Table( current_PCB->p_id, current_PCB->pageTable[status] );
-            Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
+
+            //Set the address and valid bit of page error
             Z502_PAGE_TBL_ADDR[status] = frame;
             Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
             //Based on Call Type
@@ -166,12 +165,6 @@ void    fault_handler( void )
                 ZCALL( MEM_WRITE( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
             }
             break;
-            /*            
-            debugPrint("INVALID MEMORY");
-            debugPrint("TERMINATE PROCESS AND CHILDREN");
-            MEM_WRITE(Z502InterruptClear, &Index );
-            terminate_Process(-2, &Index);
-            break; */
     }
 
     printf( "Fault_handler: Found vector type %d with value %d\n",
@@ -195,8 +188,9 @@ void    os_switch_context_complete( void )
     INT16               call_type;
     MSG_t*              Message;
 
-    Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
+    
     Z502_PAGE_TBL_ADDR = current_PCB->pageTable;
+    Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print == TRUE )
@@ -452,10 +446,8 @@ INT32	OS_Create_Process( char * name, void * procPTR,
     PCB->msg_state = READY_MSG;
 	PCB->msg_count = 0;
     
+    //Set all values in pageTable to zero
     memset(PCB->pageTable, 0, VIRTUAL_MEM_PGS+1);
-    Z502_PAGE_TBL_LENGTH = 1024;
-    Z502_PAGE_TBL_ADDR = PCB->pageTable;
-    Z502_PAGE_TBL_ADDR[0] |= PTBL_VALID_BIT;
 
 	//If there is a process currently running (not first PCB)
     //Set the new PCB's parent to the running process

@@ -1792,9 +1792,10 @@ void    test2b( void )
            STEP( 1 )
                 Z502_REG_8 = 5 * PGSIZE;
                 Z502_REG_6 = Z502_REG_8 + Z502_REG_4 + 7;
+                printf( "\n\nRelease %s: Test 2b: Pid %ld\n", 
+                        CURRENT_REL, Z502_REG_4 );
                 MEM_WRITE( Z502_REG_8, &Z502_REG_6 );
-                printf( "\n\nRelease %s:Test 2b: Pid %ld\n", 
-                                                CURRENT_REL, Z502_REG_4 );
+
                 break;
 
            STEP( 2 )
