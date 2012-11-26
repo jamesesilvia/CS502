@@ -71,9 +71,10 @@ typedef			struct {
 
 //FrameTable TYPEDEF
 typedef 		struct {
-	INT32					logical;
-	INT32					frame;
+	INT32					PID;
+	UINT16					frame;
 	INT16					validBit;
+	INT16					inMemory;
 	INT32					refTime;
 	void					*next;
 	} FRAMETABLE_t;
@@ -134,6 +135,7 @@ void	Start_Timer( INT32 Time );
 void 	printTimer ( void );
 void	printReady ( void );
 void	printEvent ( void );
+void	printTable ( void );
 void 	debugPrint ( char * toprint );
 //Idle
 void 	EVENT_IDLE ( void );
@@ -158,7 +160,9 @@ void 	get_msg_Inbox ( char *message, INT32 *msg_sndLen, INT32 *sender_ID );
 void 	add_to_Inbox ( PCB_t *dest, MSG_t *msgRecv );
 INT32 	add_to_Outbox ( MSG_t *entry );
 void 	send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID );
-//
+//Page Handlers
+void	check_pageSize( INT32 pageSize );
+INT32	manage_Table( INT32 ID, UINT16 frame);
 
 /*			Global variables			*/
 extern 		PCB_t 			*current_PCB;

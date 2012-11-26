@@ -145,7 +145,10 @@ void    fault_handler( void )
             break;
         case(INVALID_MEMORY):
             if (status >0){
-                Z502_PAGE_TBL_ADDR = &(current_PCB->pageTable[status]);
+		//Check memory request
+		check_pageSize( status );
+		manage_Table( current_PCB->p_id, current_PCB->pageTable[status] );
+		Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
                 Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
                 break;
             }
@@ -177,7 +180,7 @@ void    os_switch_context_complete( void )
     INT16               call_type;
     MSG_t*              Message;
 
-    Z502_PAGE_TBL_LENGTH = 1024;
+    Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
     Z502_PAGE_TBL_ADDR = current_PCB->pageTable;
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
@@ -349,7 +352,7 @@ void    os_init( void )
     INT32 count = 0;
     while (count < PHYS_MEM_PGS-1){        
         FRAMETABLE_t *Table = (FRAMETABLE_t *)(malloc(sizeof(FRAMETABLE_t)));
-        Table->logical = -1;
+	Table->PID = -1;
         Table->frame = -1;
         Table->validBit = -1;
         Table->refTime = -1;
