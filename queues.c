@@ -65,12 +65,14 @@ void add_to_timerQueue( PCB_t **ptrFirst, PCB_t *entry ){
 void add_to_eventQueue ( INT32 *device_id, INT32 *status ){
 	//Set space for the new event PCB
 	EVENT_t *event = (EVENT_t *)(malloc(sizeof(EVENT_t)));
+//	event->id = inc_event;
 	event->device_ID = *device_id;
 	event->Status = *status;
 	event->next = NULL;
 	
 	// Increase global event_count
 	event_count++;
+//	inc_event++;
 	// Different typedef, could not use default add_to_Queue
 	EVENT_t * ptrCheck = eventList;
 	if (ptrCheck == NULL){

@@ -41,25 +41,25 @@ void check_pageSize( INT32 pageSize ){
 	else{
 		debugPrint("FATAL ERROR IN PAGE SIZE");
 		debugPrint("TERMINATING PROCESS AND CHILDREN");
-		terminate_Process(-2, &Index);
+		CALL( terminate_Process(-2, &Index) );
 	}
 }
 
 void read_Disk( INT32 disk_id, INT32 sector, char *DATA ){
 	INT32 	Temp, Temp1;
 
-	lockDisks();
+	ZCALL( lockDisks() );
 	//ID, Sector, and Data
-	MEM_WRITE( Z502DiskSetID, &disk_id );
-    MEM_WRITE( Z502DiskSetSector, &sector );
-    MEM_WRITE( Z502DiskSetBuffer, (INT32 *)DATA );
+	ZCALL( MEM_WRITE( Z502DiskSetID, &disk_id ) );
+    ZCALL( MEM_WRITE( Z502DiskSetSector, &sector ) );
+    ZCALL( MEM_WRITE( Z502DiskSetBuffer, (INT32 *)DATA ) );
     //Specify a read
     Temp = 0;
-    MEM_WRITE( Z502DiskSetAction, &Temp );
+    ZCALL( MEM_WRITE( Z502DiskSetAction, &Temp ) );
     //Start disk
     Temp = 0;                        // Must be set to 0
-    MEM_WRITE( Z502DiskStart, &Temp );
-    unlockDisks();
+    ZCALL( MEM_WRITE( Z502DiskStart, &Temp ) );
+    ZCALL( unlockDisks() );
 
     current_PCB->disk = disk_id;
     CALL( suspend_Process(-1, &Temp1) );
@@ -68,27 +68,27 @@ void read_Disk( INT32 disk_id, INT32 sector, char *DATA ){
 void write_Disk( INT32 disk_id, INT32 sector, char *DATA ){
 	INT32	Temp, Temp1;
 
-	lockDisks();
+	ZCALL( lockDisks() );
 	//ID, Sector, and Data
-	MEM_WRITE( Z502DiskSetID, &disk_id );
-    MEM_WRITE( Z502DiskSetSector, &sector );
-    MEM_WRITE( Z502DiskSetBuffer, (INT32 *)DATA);
+	ZCALL( MEM_WRITE( Z502DiskSetID, &disk_id ) );
+    ZCALL( MEM_WRITE( Z502DiskSetSector, &sector ) );
+    ZCALL( MEM_WRITE( Z502DiskSetBuffer, (INT32 *)DATA ) );
     //Specify a write
     Temp = 1;
-    MEM_WRITE( Z502DiskSetAction, &Temp );
+    ZCALL( MEM_WRITE( Z502DiskSetAction, &Temp ) );
     //Start disk
     Temp = 0;                        // Must be set to 0
-    MEM_WRITE( Z502DiskStart, &Temp );
+    ZCALL( MEM_WRITE( Z502DiskStart, &Temp ) );
 
     //Did it start? 
     //** CURRENTLY GETTING ERRONEOUS RESULT
-    MEM_READ( Z502DiskStatus, &Temp );
+    ZCALL( MEM_READ( Z502DiskStatus, &Temp ) );
     printf("DISK STATUS %d\n\n", Temp);
     if ( Temp == DEVICE_IN_USE )        // Disk should report being used
         printf( "Got expected result for Disk Status\n" );
     else
         printf( "Got erroneous result for Disk Status\n" );
-	unlockDisks();
+	ZCALL( unlockDisks() );
 
     current_PCB->disk = disk_id;    
     CALL( suspend_Process( -1, &Temp1) );
@@ -98,7 +98,7 @@ void diskHandler( INT32 diskStatus ){
 
 	switch(diskStatus){
 		case(ERR_SUCCESS):
-			wakeup_Disks();
+			CALL( wakeup_Disks() );
 			printf("ERR_SUCCESS\n");
 			break;
 		case(ERR_BAD_PARAM):
@@ -123,7 +123,7 @@ void wakeup_Disks( void ){
 			(ptrCheck->p_state == SUSPENDED_STATE) ){
 
 			ptrCheck->disk = -1;
-			resume_Process( ptrCheck->p_id, &Temp );
+			CALL( resume_Process( ptrCheck->p_id, &Temp ) );
 
 			CALL( switchPCB = get_readyPCB() );
             //No ready items, IDLE

@@ -704,6 +704,9 @@ void eventHandler ( void ) {
             case(DISK_INTERRUPT):
                 CALL( diskHandler(ptrCheck->Status) );
                 break;
+            case(DISK_INTERRUPT_DISK2):
+                printf("DAFUQQQQQQQQQQ");
+                break;
         }
 		
         CALL( rm_from_eventQueue(interrupt) );

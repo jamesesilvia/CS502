@@ -71,6 +71,7 @@ typedef         struct {
 
 //Event TYPEDEF
 typedef			struct {
+	INT32					id;
 	INT32					device_ID;
 	INT32					Status;
 	void					*next;
@@ -183,8 +184,8 @@ extern		EVENT_t			*eventList;
 extern 		INT32 			inc_pid;
 extern		INT32			total_pid;
 extern		FRAMETABLE_t 	*pageList;
-//extern		volatile 		INT32			ISR;
 extern		INT32			event_count;
+extern		INT32			inc_event;
 
 /*			State Printouts				*/
 extern		INT32			CREATEpo;
