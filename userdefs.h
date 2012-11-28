@@ -25,6 +25,11 @@
 #define			READY_MSG				62
 #define			RECV_SUS_MSG			63
 
+//Disk States
+#define			DEFAULT_STATE			80
+#define			WRITE_STATE				81
+#define			READ_STATE 				82
+
 //Max IDs, PCB Name, Priority, MSG Buff Size, MSG Count
 #define			MAX_PIDs				100
 #define			MAX_NAME				16
@@ -32,8 +37,9 @@
 #define			MAX_MSG					128
 #define			MAX_MSG_COUNT			10
 
+
 //debugPrint, 1 to print, 0 to not print
-#define			DEBUGFLAG 				1
+#define			DEBUGFLAG 				0
 
 //Message TYPEDEF
 typedef			struct{
@@ -54,6 +60,7 @@ typedef         struct {
 	INT32					p_time;
 	INT32					msg_state;
 	INT32					msg_count;
+	INT32					disk;
 	UINT16					pageTable[VIRTUAL_MEM_PGS];
 	void					*context;
 	void					*next;
@@ -165,6 +172,8 @@ INT32	get_emptyFrame( INT32 pageRequest );
 //DISKS
 void 	write_Disk( INT32 disk_id, INT32 sector, char *DATA );
 void 	read_Disk( INT32 disk_id, INT32 sector, char *DATA );
+void 	diskHandler( INT32 diskStatus );
+void 	wakeup_Disks( void );
 
 /*			Global variables			*/
 extern 		PCB_t 			*current_PCB;

@@ -91,6 +91,7 @@ void    interrupt_handler( void ) {
 	INT32			   wokenUp;
 	INT32			   sleeptime;
 
+
     // Get cause of interrupt
     MEM_READ(Z502InterruptDevice, &device_id );
     // Set this device as target of our query
@@ -192,6 +193,8 @@ void    os_switch_context_complete( void )
     Z502_PAGE_TBL_ADDR = current_PCB->pageTable;
     Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
 
+//    CALL( eventHandler() );
+
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print == TRUE )
     {
@@ -208,14 +211,14 @@ void    os_switch_context_complete( void )
         CALL( get_msg_Inbox((char *)Z502_ARG2.PTR,(INT32 *)Z502_ARG4.PTR,
             (INT32 *)Z502_ARG5.PTR) );
    }
-   if (call_type == SYSNUM_DISK_WRITE){
+/*   if (call_type == SYSNUM_DISK_WRITE){
         CALL( write_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL,
                 (char *)Z502_ARG3.PTR) );
-   }
-   if (call_type == SYSNUM_DISK_READ){
+   }*/
+/*   if (call_type == SYSNUM_DISK_READ){
         CALL( read_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL, 
                 (char *)Z502_ARG3.PTR) );
-   }
+   }*/
 }                               /* End of os_switch_context_complete */
 
 /************************************************************************
@@ -444,6 +447,7 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 	PCB->next = NULL;
 	PCB->prev = NULL;
     PCB->msg_state = READY_MSG;
+    PCB->disk = -1;
 	PCB->msg_count = 0;
     
     //Set all values in pageTable to zero
@@ -650,48 +654,62 @@ INT32 get_currentTime( void ) {
 */
 void eventHandler ( void ) {
 	EVENT_t *ptrCheck = eventList;
-	
+
+    INT32              interrupt;	
     INT32 			   currentTime;
 	INT32			   wokenUp;
 	INT32			   sleeptime;
     PCB_t 			   *switchPCB;
+    
 
 	//Remove all Events from Queue
 	while (ptrCheck != NULL){
-		CALL( rm_from_eventQueue(ptrCheck->device_ID) );
+        interrupt = ptrCheck->device_ID;
+        switch(interrupt){
+            //TIMER INTERRUPT
+            case(TIMER_INTERRUPT):
+                //Get current CPU Time  
+                CALL( currentTime = get_currentTime() );
+                //Wake up all WAITING items that are before currentTime
+                CALL( wokenUp = wake_timerList(currentTime) );
+                //Get sleeptime
+                CALL( sleeptime = checkTimer (currentTime) );
+
+                //There are more items on timerQueue
+                //Start the new timer
+                if( sleeptime > 0) CALL( Start_Timer(sleeptime) );
+    
+                //New items woken up
+                if (wokenUp > 0){
+                    CALL( switchPCB = get_readyPCB() );
+                     //No ready items, IDLE
+                    if (switchPCB == NULL){
+                        ZCALL( EVENT_IDLE() );
+                    }
+                     //Switch if current PCB is not ready PCB
+                    else if ( switchPCB->p_id != current_PCB->p_id ){
+                        CALL( switch_Savecontext( switchPCB ) );
+                    }
+                    //Return if they are the same
+                    else if ( switchPCB->p_id == current_PCB->p_id ){
+                        return;         
+                    }
+                    //Otherwise, IDLE
+                    else{
+                        ZCALL( EVENT_IDLE() );
+                    }
+                }
+                break;
+                //DISK INTERRUPT
+            case(DISK_INTERRUPT):
+                CALL( diskHandler(ptrCheck->Status) );
+                break;
+        }
+		
+        CALL( rm_from_eventQueue(interrupt) );
 		ptrCheck = ptrCheck->next;
 	}
-	//Get current CPU Time	
-	CALL( currentTime = get_currentTime() );
-	//Wake up all WAITING items that are before currentTime
-	CALL( wokenUp = wake_timerList(currentTime) );
-	//Get sleeptime
-	CALL( sleeptime = checkTimer (currentTime) );
 
-	//There are more items on timerQueue
-    //Start the new timer
-	if( sleeptime > 0) CALL( Start_Timer(sleeptime) );
-	
-	//New items woken up
-	if (wokenUp > 0){
-		CALL( switchPCB = get_readyPCB() );
-        //No ready items, IDLE
-		if (switchPCB == NULL){
-			ZCALL( EVENT_IDLE() );
-		}
-        //Switch if current PCB is not ready PCB
-		else if ( switchPCB->p_id != current_PCB->p_id ){
-			CALL( switch_Savecontext( switchPCB ) );
-		}
-        //Return if they are the same
-		else if ( switchPCB->p_id == current_PCB->p_id ){
-			return;			
-		}
-        //Otherwise, IDLE
-		else{
-			ZCALL( EVENT_IDLE() );
-		}
-	}	
 }
 // Helper function, that is used to IDLE
 // If there are no events, Z502 IDLE is called,

@@ -39,7 +39,7 @@ void unlockReady ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 1, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
-//Z502 Timer Lock
+//Z502 Timer Locks
 void HW_lock( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 2, DO_LOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
@@ -48,7 +48,7 @@ void HW_unlock ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 2, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
-//EventQueue ocks
+//EventQueue Locks
 void lockEvent ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 3, DO_LOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
@@ -57,5 +57,16 @@ void unlockEvent ( void ){
 	INT32 LockResult;
 	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 3, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
 }
+//Disk Locks
+void lockDisks ( void ){
+	INT32 LockResult;
+	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 4, DO_LOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
+}
+void unlockDisks ( void ){
+	INT32 LockResult;
+	Z502_READ_MODIFY( MEMORY_INTERLOCK_BASE + 4, DO_UNLOCK, SUSPEND_UNTIL_LOCKED, &LockResult );
+}
+
+
 
 
