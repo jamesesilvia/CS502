@@ -64,6 +64,7 @@ char                 *call_names[] = { "mem_read ", "mem_write",
 INT32	 			inc_pid = 0;
 INT32				total_pid = 0;
 INT32				event_count = 0;
+INT32               inc_event = 0;
 
 INT32               CREATEpo = 0;
 INT32               TERMINATEpo = 0;
@@ -82,25 +83,29 @@ INT32               FAULTpo = 0;
         this routine in the OS.
 ************************************************************************/
 void    interrupt_handler( void ) {
-    INT32              device_id;
-    INT32              Status;
-    INT32              Index = 0;
-    INT32 			   currentTime;
-    INT32 			   success;
-    PCB_t 			   *switchPCB;
-	INT32			   wokenUp;
-	INT32			   sleeptime;
+    	INT32 		   device_id;
+    	INT32              Status;
+    	INT32              Index = 0;
+    	INT32 		   currentTime;
+    	INT32 		   success;
+    	PCB_t 		   *switchPCB;
+	INT32		   wokenUp;
+	INT32		   sleeptime;
 
 
-    // Get cause of interrupt
-    MEM_READ(Z502InterruptDevice, &device_id );
-    // Set this device as target of our query
-    MEM_WRITE(Z502InterruptDevice, &device_id );
-    // Now read the status of this device
-    MEM_READ(Z502InterruptStatus, &Status );
-	
-	CALL( add_to_eventQueue(&device_id, &Status) );	
-	ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+    	// Get cause of interrupt
+    	ZCALL( MEM_READ(Z502InterruptDevice, &device_id ) );
+    	while(device_id != -1){
+        	// Set this device as target of our query
+        	ZCALL( MEM_WRITE(Z502InterruptDevice, &device_id ) );
+        	// Now read the status of this device
+        	ZCALL( MEM_READ(Z502InterruptStatus, &Status ) );
+    
+        	CALL( add_to_eventQueue(&device_id, &Status) ); 
+        	ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+
+        	ZCALL( MEM_READ(Z502InterruptDevice, &device_id ) );
+   	 }
 	return;
 }                                       /* End of interrupt_handler */
 
@@ -131,7 +136,7 @@ void    fault_handler( void )
         SP_setup( SP_FAULT_MODE, current_PCB->p_id );
         SP_print_header();
         SP_print_line();
-    }
+    } 
        
     //Switch case on fault device ID.
     //Terminate Process and children on fault catch
@@ -150,7 +155,6 @@ void    fault_handler( void )
             break;
         case(INVALID_MEMORY):
             //Check pageSize request
-            printTable();
             CALL( check_pageSize( status ) );
             CALL( frame = get_emptyFrame( status ) );
 
@@ -165,6 +169,7 @@ void    fault_handler( void )
             else if( call_type == SYSNUM_MEM_WRITE ){
                 ZCALL( MEM_WRITE( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
             }
+	        printMemory(); 
             break;
     }
 
@@ -192,8 +197,7 @@ void    os_switch_context_complete( void )
     
     Z502_PAGE_TBL_ADDR = current_PCB->pageTable;
     Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
-
-//    CALL( eventHandler() );
+//	printReady();
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print == TRUE )
@@ -368,7 +372,15 @@ void    os_init( void )
         procPTR = test2c;
         TERMINATEpo = 1;
     }
-	else{
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2d" ) == 0 ) ){
+        procPTR = test2d;
+        TERMINATEpo = 1;
+    }
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2e" ) == 0 ) ){
+        procPTR = test2e;
+        TERMINATEpo = 1;
+    }
+    else{
         printf("NO TEST SELECTED, HALT!!!");
         Z502_HALT();
     }
@@ -588,12 +600,10 @@ void    svc( void ) {
     			(INT32 *)Z502_ARG6.PTR) );
     		break;
         case SYSNUM_DISK_READ:
-            CALL( read_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL, 
-                (char *)Z502_ARG3.PTR) );
+            CALL( read_Disk( Z502_ARG1.VAL, Z502_ARG2.VAL, Z502_ARG3.PTR) );
             break;
         case SYSNUM_DISK_WRITE:
-            CALL( write_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL,
-                (char *)Z502_ARG3.PTR) );
+            CALL( write_Disk( Z502_ARG1.VAL, Z502_ARG2.VAL, Z502_ARG3.PTR) );
             break;
         //HALT IF CALL TYPE NOT RECOGNIZED
 		default:
@@ -655,63 +665,54 @@ INT32 get_currentTime( void ) {
 void eventHandler ( void ) {
 	EVENT_t *ptrCheck = eventList;
 
-    INT32              interrupt;	
+    INT32              interrupt;
+    INT32              eventID;	
     INT32 			   currentTime;
-	INT32			   wokenUp;
-	INT32			   sleeptime;
-    PCB_t 			   *switchPCB;
-    
+	INT32			   timeUp = 0;
+	INT32		       diskUp = 0;
+	INT32			   sleeptime;    
 
 	//Remove all Events from Queue
 	while (ptrCheck != NULL){
         interrupt = ptrCheck->device_ID;
+        eventID = ptrCheck->id;
+        CALL( rm_from_eventQueue(eventID) );
         switch(interrupt){
             //TIMER INTERRUPT
             case(TIMER_INTERRUPT):
                 //Get current CPU Time  
                 CALL( currentTime = get_currentTime() );
                 //Wake up all WAITING items that are before currentTime
-                CALL( wokenUp = wake_timerList(currentTime) );
+                CALL( timeUp = wake_timerList(currentTime) );
                 //Get sleeptime
                 CALL( sleeptime = checkTimer (currentTime) );
-
                 //There are more items on timerQueue
                 //Start the new timer
                 if( sleeptime > 0) CALL( Start_Timer(sleeptime) );
-    
-                //New items woken up
-                if (wokenUp > 0){
-                    CALL( switchPCB = get_readyPCB() );
-                     //No ready items, IDLE
-                    if (switchPCB == NULL){
-                        ZCALL( EVENT_IDLE() );
-                    }
-                     //Switch if current PCB is not ready PCB
-                    else if ( switchPCB->p_id != current_PCB->p_id ){
-                        CALL( switch_Savecontext( switchPCB ) );
-                    }
-                    //Return if they are the same
-                    else if ( switchPCB->p_id == current_PCB->p_id ){
-                        return;         
-                    }
-                    //Otherwise, IDLE
-                    else{
-                        ZCALL( EVENT_IDLE() );
-                    }
-                }
                 break;
-                //DISK INTERRUPT
-            case(DISK_INTERRUPT):
-                CALL( diskHandler(ptrCheck->Status) );
-                break;
-            case(DISK_INTERRUPT_DISK2):
-                printf("DAFUQQQQQQQQQQ");
-                break;
-        }
-		
-        CALL( rm_from_eventQueue(interrupt) );
+            //DISK INTERRUPT
+            case(DISK_INTERRUPT_DISK1):
+            case(DISK_INTERRUPT_DISK2):     
+            case(DISK_INTERRUPT_DISK3):
+            case(DISK_INTERRUPT_DISK4):
+            case(DISK_INTERRUPT_DISK5):
+            case(DISK_INTERRUPT_DISK6):
+            case(DISK_INTERRUPT_DISK7):
+            case(DISK_INTERRUPT_DISK8):
+            case(DISK_INTERRUPT_DISK9):
+            case(DISK_INTERRUPT_DISK10):
+            case(DISK_INTERRUPT_DISK11):
+            case(DISK_INTERRUPT_DISK12):
+                CALL( diskUp = diskHandler(ptrCheck->Status, interrupt - 4) );
+                diskUp += diskUp;
+		break;
+		}
 		ptrCheck = ptrCheck->next;
 	}
+
+	if( diskUp > 0 || timeUp > 0){
+		switch_Context();
+	} 
 
 }
 // Helper function, that is used to IDLE
@@ -722,3 +723,25 @@ void EVENT_IDLE ( void ) {
 	CALL( eventHandler() );
 }
 
+void switch_Context ( void ){
+    PCB_t              *switchPCB;
+
+    if (total_pid <= 0) ZCALL( Z502_HALT() );
+    CALL( switchPCB = get_readyPCB() );
+     //No ready items, IDLE
+    if (switchPCB == NULL){
+        ZCALL( EVENT_IDLE() );
+    }
+     //Switch if current PCB is not ready PCB
+    else if ( switchPCB->p_id != current_PCB->p_id ){
+        CALL( switch_Savecontext( switchPCB ) );
+    }
+    //Return if they are the same
+    else if ( switchPCB->p_id == current_PCB->p_id ){
+        return;         
+    }
+     //Otherwise, IDLE
+    else{
+        ZCALL( EVENT_IDLE() );
+    }
+}

@@ -37,6 +37,9 @@
 #define			MAX_MSG					128
 #define			MAX_MSG_COUNT			10
 
+#define			MAX_DISKS				12
+#define			MAX_SECTORS				1600
+
 
 //debugPrint, 1 to print, 0 to not print
 #define			DEBUGFLAG 				0
@@ -86,6 +89,16 @@ typedef 		struct {
 	void					*next;
 	} FRAMETABLE_t;
 
+//ShadowTable TYPEDEF
+typedef 		struct {
+	INT32					p_id;
+	INT32					page;
+	INT32					frame;
+	INT32					disk;
+	INT32					sector;
+	void					*next;	
+	} SHADOWTABLE_t;
+
 /*			FUNCTION CALLS				*/
 
 //Create Process
@@ -97,6 +110,7 @@ void 	make_switch_Savecontext( PCB_t * PCB, void *procPTR);
 void 	make_switch_Killcontext( PCB_t * PCB, void *procPTR);
 void 	switch_Killcontext( PCB_t * PCB );
 void 	switch_Savecontext ( PCB_t * PCB );
+void 	switch_Context ( void );
 //Add Queues
 void 	add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry );
 void 	add_to_timerQueue ( PCB_t **ptrFirst, PCB_t *entry );
@@ -143,6 +157,7 @@ void 	printTimer ( void );
 void	printReady ( void );
 void	printEvent ( void );
 void	printTable ( void );
+void	printMemory ( void );
 void 	debugPrint ( char * toprint );
 //Idle
 void 	EVENT_IDLE ( void );
@@ -171,10 +186,11 @@ void 	send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID );
 void	check_pageSize( INT32 pageSize );
 INT32	get_emptyFrame( INT32 pageRequest );
 //DISKS
-void 	write_Disk( INT32 disk_id, INT32 sector, char *DATA );
-void 	read_Disk( INT32 disk_id, INT32 sector, char *DATA );
-void 	diskHandler( INT32 diskStatus );
-void 	wakeup_Disks( void );
+void 	write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] );
+void 	read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] );
+INT32 	diskHandler( INT32 diskStatus, INT32 disk );
+INT32 	wakeup_Disks( INT32 disk );
+void 	get_emptyDisk( INT16 *disk, INT16 *sector);
 
 /*			Global variables			*/
 extern 		PCB_t 			*current_PCB;
@@ -186,6 +202,8 @@ extern		INT32			total_pid;
 extern		FRAMETABLE_t 	*pageList;
 extern		INT32			event_count;
 extern		INT32			inc_event;
+		
+extern		INT16			bitMap[MAX_DISKS][MAX_SECTORS];
 
 /*			State Printouts				*/
 extern		INT32			CREATEpo;

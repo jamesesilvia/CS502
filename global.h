@@ -125,15 +125,24 @@ typedef         int                             BOOL;
         /* Definition of interrupt types.                       */
 
 #define         TIMER_INTERRUPT                 (short)4
-#define         DISK_INTERRUPT                  (short)5
+#define		    DISK_INTERRUPT			        (short)5
 #define         DISK_INTERRUPT_DISK1            (short)5
 #define         DISK_INTERRUPT_DISK2            (short)6
+#define         DISK_INTERRUPT_DISK3            (short)7
+#define         DISK_INTERRUPT_DISK4            (short)8
+#define         DISK_INTERRUPT_DISK5            (short)9
+#define         DISK_INTERRUPT_DISK6            (short)10
+#define         DISK_INTERRUPT_DISK7            (short)11
+#define         DISK_INTERRUPT_DISK8            (short)12
+#define         DISK_INTERRUPT_DISK9            (short)13
+#define         DISK_INTERRUPT_DISK10           (short)14
+#define         DISK_INTERRUPT_DISK11           (short)15
+#define         DISK_INTERRUPT_DISK12           (short)16
 /*      ... we could define other explicit names here           */
 
 #define         LARGEST_STAT_VECTOR_INDEX       DISK_INTERRUPT + \
                                                 MAX_NUMBER_OF_DISKS - 1
 
-
 /*      Definition of the TO_VECTOR array.  The TO_VECTOR
         contains pointers to the routines which will handle
         hardware exceptions.  The pointers are accessed with

@@ -22,6 +22,8 @@
 
 #include			"userdefs.h"
 
+extern UINT16        *Z502_PAGE_TBL_ADDR;
+
 //Print the Timer Queue
 void printTimer ( void ){
 	PCB_t * ptrCheck = timerList;
@@ -46,9 +48,10 @@ void printReady ( void ){
 		printf("Name: %s\t", ptrCheck->p_name);
 		printf("ID: %d\t", ptrCheck->p_id);
 		printf("WakeupTime: %d\t", ptrCheck->p_time);
-		printf("Priority: %d\t", ptrCheck->p_priority);
+		printf("Priority: %d\n", ptrCheck->p_priority);
 		printf("State: %d\t", ptrCheck->p_state);
-		printf("MSGState: %d\n", ptrCheck->msg_state);
+		printf("MSGState: %d\t", ptrCheck->msg_state);
+		printf("Disk: %d\n", ptrCheck->disk);
 		printf("------------------------------\n");
 		ptrCheck = ptrCheck->next;
 	}
@@ -101,3 +104,18 @@ void debugPrint ( char * toprint ){
 		printf("%s\n", toprint);
 	}
 }
+
+void printMemory ( void  ){
+	FRAMETABLE_t 	*ptrCheck;
+	ptrCheck = pageList;
+
+	while( ptrCheck != NULL ){
+		if( ptrCheck->page != -1 ){
+			MP_setup( ptrCheck->frame, ptrCheck->p_id, 
+				ptrCheck->page, (*Z502_PAGE_TBL_ADDR & 0xE000) >> 13 );
+		}
+		ptrCheck = ptrCheck->next;
+	}
+	MP_print_line(); 
+}
+

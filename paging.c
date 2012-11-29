@@ -15,6 +15,8 @@
 
 #define			MAXPGSIZE			1024
 
+INT16			bitMap[MAX_DISKS][MAX_SECTORS] = {-1};
+
 INT32 get_emptyFrame( INT32 pageRequest ){
 	FRAMETABLE_t *ptrCheck = pageList;
 
@@ -45,34 +47,52 @@ void check_pageSize( INT32 pageSize ){
 	}
 }
 
-void read_Disk( INT32 disk_id, INT32 sector, char *DATA ){
-	INT32 	Temp, Temp1;
+void read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
+	INT32 	Temp = 0;
+	INT32	Temp1 = 0;
 
-	ZCALL( lockDisks() );
+	INT32 	DISK = disk_id;
+	INT32	SECT = sector;
+
 	//ID, Sector, and Data
-	ZCALL( MEM_WRITE( Z502DiskSetID, &disk_id ) );
-    ZCALL( MEM_WRITE( Z502DiskSetSector, &sector ) );
-    ZCALL( MEM_WRITE( Z502DiskSetBuffer, (INT32 *)DATA ) );
+	ZCALL( MEM_WRITE( Z502DiskSetID, &DISK) );
+    while( Temp != DEVICE_FREE )  {
+        ZCALL( Z502_IDLE() );
+        ZCALL( MEM_WRITE( Z502DiskSetID, &DISK) );       
+        ZCALL( MEM_READ( Z502DiskStatus, &Temp ) );
+    }
+    ZCALL( MEM_WRITE( Z502DiskSetSector, &SECT ) );
+    ZCALL( MEM_WRITE( Z502DiskSetBuffer, (INT32*)DATA ) );
     //Specify a read
     Temp = 0;
     ZCALL( MEM_WRITE( Z502DiskSetAction, &Temp ) );
     //Start disk
     Temp = 0;                        // Must be set to 0
     ZCALL( MEM_WRITE( Z502DiskStart, &Temp ) );
-    ZCALL( unlockDisks() );
 
     current_PCB->disk = disk_id;
     CALL( suspend_Process(-1, &Temp1) );
 }
 
-void write_Disk( INT32 disk_id, INT32 sector, char *DATA ){
-	INT32	Temp, Temp1;
+void write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
+	INT32	Temp = 0;
+	INT32	Temp1 = 0;
 
-	ZCALL( lockDisks() );
+	INT32 DISK = (INT32) disk_id;
+	INT32 SECT = (INT32) sector;
+
 	//ID, Sector, and Data
-	ZCALL( MEM_WRITE( Z502DiskSetID, &disk_id ) );
-    ZCALL( MEM_WRITE( Z502DiskSetSector, &sector ) );
-    ZCALL( MEM_WRITE( Z502DiskSetBuffer, (INT32 *)DATA ) );
+	ZCALL( MEM_WRITE( Z502DiskSetID, &DISK ) );
+	//Wait until Disk is free
+	ZCALL( MEM_READ( Z502DiskStatus, &Temp ) );
+   while( Temp != DEVICE_FREE )  {
+        ZCALL( Z502_IDLE() );
+        ZCALL( MEM_WRITE( Z502DiskSetID, &DISK ) );       
+        ZCALL( MEM_READ( Z502DiskStatus, &Temp ) );
+    }
+    ZCALL( MEM_WRITE( Z502DiskSetSector, &SECT ) );
+
+    ZCALL( MEM_WRITE( Z502DiskSetBuffer, (INT32*)DATA ) );
     //Specify a write
     Temp = 1;
     ZCALL( MEM_WRITE( Z502DiskSetAction, &Temp ) );
@@ -80,26 +100,17 @@ void write_Disk( INT32 disk_id, INT32 sector, char *DATA ){
     Temp = 0;                        // Must be set to 0
     ZCALL( MEM_WRITE( Z502DiskStart, &Temp ) );
 
-    //Did it start? 
-    //** CURRENTLY GETTING ERRONEOUS RESULT
-    ZCALL( MEM_READ( Z502DiskStatus, &Temp ) );
-    printf("DISK STATUS %d\n\n", Temp);
-    if ( Temp == DEVICE_IN_USE )        // Disk should report being used
-        printf( "Got expected result for Disk Status\n" );
-    else
-        printf( "Got erroneous result for Disk Status\n" );
-	ZCALL( unlockDisks() );
-
     current_PCB->disk = disk_id;    
     CALL( suspend_Process( -1, &Temp1) );
 }
 
-void diskHandler( INT32 diskStatus ){
+INT32 diskHandler( INT32 diskStatus, INT32 disk ){
+	INT32 count;
+	CALL( count = wakeup_Disks(disk) );	
 
 	switch(diskStatus){
 		case(ERR_SUCCESS):
-			CALL( wakeup_Disks() );
-			printf("ERR_SUCCESS\n");
+//			printf("ERR_SUCCESS\n");
 			break;
 		case(ERR_BAD_PARAM):
 			printf("ERR_BAD_PARAM\n");
@@ -111,38 +122,41 @@ void diskHandler( INT32 diskStatus ){
 			printf("ERR_DISK_IN_USE\n");
 			break;
 	}
+	return count;
 }
 
-void wakeup_Disks( void ){
+INT32 wakeup_Disks(INT32 disk){
 	PCB_t 	*ptrCheck = pidList;
-	PCB_t 	*switchPCB;
+	INT32	count = 0;
 	INT32	Temp = 0;
 
 	while( ptrCheck != NULL ){
-		if ( (ptrCheck->disk != -1) && 
+		if ( (ptrCheck->disk == disk) && 
 			(ptrCheck->p_state == SUSPENDED_STATE) ){
-
+			count++;
 			ptrCheck->disk = -1;
-			CALL( resume_Process( ptrCheck->p_id, &Temp ) );
-
-			CALL( switchPCB = get_readyPCB() );
-            //No ready items, IDLE
-            if (switchPCB == NULL){
-            	ZCALL( EVENT_IDLE() );
-            }
-            //Switch if current PCB is not ready PCB
-             else if ( switchPCB->p_id != current_PCB->p_id ){
-             	CALL( switch_Savecontext( switchPCB ) );
-             }
-             //Return if they are the same
-             else if ( switchPCB->p_id == current_PCB->p_id ){
-             	return;
-             }
-             //Otherwise, IDLE
-              else{
-              	ZCALL( EVENT_IDLE() );
-              }
+			ptrCheck->p_state = READY_STATE;			
 		}
 		ptrCheck = ptrCheck->next;
 	}
+	//printf("WOKE UP %d\n", count);
+	return count;
+}
+
+void get_emptyDisk( INT16 *disk, INT16 *sector){
+	INT16 disks, sectors;
+
+	for( disks = 1; disks <= MAX_DISKS; disk++ ){
+		for( sectors = 1; sectors <= MAX_SECTORS; sectors++ ){
+			if( bitMap[disks][sectors] != -1 ){
+				bitMap[disks][sectors] = 1;
+				*disk = disks;
+				*sector = sectors;
+				return;
+			}
+		}
+	}
+	*disk = -1;
+	*sector = -1;
+	return;
 }
