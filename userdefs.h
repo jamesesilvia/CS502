@@ -183,14 +183,20 @@ void 	add_to_Inbox ( PCB_t *dest, MSG_t *msgRecv );
 INT32 	add_to_Outbox ( MSG_t *entry );
 void 	send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID );
 //Page Handlers
+INT32 	handlePaging( INT32 pageRequest, INT32 *full );
 void	check_pageSize( INT32 pageSize );
 INT32	get_emptyFrame( INT32 pageRequest );
+FRAMETABLE_t* 	get_fullFrame( INT32 pageRequest );
 //DISKS
 void 	write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] );
 void 	read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] );
 INT32 	diskHandler( INT32 diskStatus, INT32 disk );
 INT32 	wakeup_Disks( INT32 disk );
 void 	get_emptyDisk( INT16 *disk, INT16 *sector);
+void 	add_to_Shadow( SHADOWTABLE_t *entry );
+void 	updatePage(INT32 pageRequest, INT32 frame);
+void	mem_toDisk( FRAMETABLE_t *tableReturn, INT32 pageRequest );
+void	disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest );
 
 /*			Global variables			*/
 extern 		PCB_t 			*current_PCB;
@@ -202,6 +208,7 @@ extern		INT32			total_pid;
 extern		FRAMETABLE_t 	*pageList;
 extern		INT32			event_count;
 extern		INT32			inc_event;
+extern		SHADOWTABLE_t	*shadowList;
 		
 extern		INT16			bitMap[MAX_DISKS][MAX_SECTORS];
 

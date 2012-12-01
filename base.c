@@ -26,33 +26,33 @@
 #include             "protos.h"
 #include             "string.h"
 
-#include			"userdefs.h"
+#include            "userdefs.h"
 
-extern char          MEMORY[];  
-extern BOOL          POP_THE_STACK;
-extern UINT16        *Z502_PAGE_TBL_ADDR;
-extern INT16         Z502_PAGE_TBL_LENGTH;
-extern INT16         Z502_PROGRAM_COUNTER;
-extern INT16         Z502_INTERRUPT_MASK;
-extern INT32         SYS_CALL_CALL_TYPE;
-extern INT16         Z502_MODE;
-extern Z502_ARG      Z502_ARG1;
-extern Z502_ARG      Z502_ARG2;
-extern Z502_ARG      Z502_ARG3;
-extern Z502_ARG      Z502_ARG4;
-extern Z502_ARG      Z502_ARG5;
-extern Z502_ARG      Z502_ARG6;
+extern char			MEMORY[];  
+extern BOOL			POP_THE_STACK;
+extern UINT16			*Z502_PAGE_TBL_ADDR;
+extern INT16			Z502_PAGE_TBL_LENGTH;
+extern INT16			Z502_PROGRAM_COUNTER;
+extern INT16			Z502_INTERRUPT_MASK;
+extern INT32			SYS_CALL_CALL_TYPE;
+extern INT16			Z502_MODE;
+extern Z502_ARG			Z502_ARG1;
+extern Z502_ARG			Z502_ARG2;
+extern Z502_ARG			Z502_ARG3;
+extern Z502_ARG			Z502_ARG4;
+extern Z502_ARG			Z502_ARG5;
+extern Z502_ARG			Z502_ARG6;
 
 extern void          *TO_VECTOR [];
 extern INT32         CALLING_ARGC;
 extern char          **CALLING_ARGV;
 
-PCB_t		     	*pidList = NULL;
-PCB_t		     	*timerList = NULL;
+PCB_t				*pidList = NULL;
+PCB_t				*timerList = NULL;
 PCB_t				*current_PCB = NULL;
-EVENT_t		     	*eventList = NULL;
+EVENT_t				*eventList = NULL;
 
-FRAMETABLE_t        *pageList = NULL;
+FRAMETABLE_t		*pageList = NULL;
 
 char                 *call_names[] = { "mem_read ", "mem_write",
                             "read_mod ", "get_time ", "sleep    ", 
@@ -61,21 +61,21 @@ char                 *call_names[] = { "mem_read ", "mem_write",
                             "send     ", "receive  ", "disk_read",
                             "disk_wrt ", "def_sh_ar" };
 
-INT32	 			inc_pid = 0;
-INT32				total_pid = 0;
-INT32				event_count = 0;
-INT32               inc_event = 0;
+INT32			inc_pid = 0;
+INT32			total_pid = 0;
+INT32			event_count = 0;
+INT32			inc_event = 0;
 
-INT32               CREATEpo = 0;
-INT32               TERMINATEpo = 0;
-INT32               SLEEPpo = 0;
-INT32               RESUMEpo = 0;
-INT32               SUSPENDpo = 0;
-INT32               PRIORITYpo = 0;
-INT32               SENDpo = 0;
-INT32               RECEIVEpo = 0;
-INT32               WAKEUPpo = 0;
-INT32               FAULTpo = 0;
+INT32			CREATEpo = 0;
+INT32			TERMINATEpo = 0;
+INT32			SLEEPpo = 0;
+INT32			RESUMEpo = 0;
+INT32			SUSPENDpo = 0;
+INT32			PRIORITYpo = 0;
+INT32			SENDpo = 0;
+INT32			RECEIVEpo = 0;
+INT32			WAKEUPpo = 0;
+INT32			FAULTpo = 0;
 
 /************************************************************************
     INTERRUPT_HANDLER
@@ -83,30 +83,29 @@ INT32               FAULTpo = 0;
         this routine in the OS.
 ************************************************************************/
 void    interrupt_handler( void ) {
-    	INT32 		   device_id;
-    	INT32              Status;
-    	INT32              Index = 0;
-    	INT32 		   currentTime;
-    	INT32 		   success;
-    	PCB_t 		   *switchPCB;
-	INT32		   wokenUp;
-	INT32		   sleeptime;
+		INT32			device_id;
+        INT32			Status;
+        INT32			Index = 0;
+        INT32			currentTime;
+        INT32			success;
+        PCB_t			*switchPCB;
+		INT32			wokenUp;
+		INT32			sleeptime;
 
-
-    	// Get cause of interrupt
-    	ZCALL( MEM_READ(Z502InterruptDevice, &device_id ) );
-    	while(device_id != -1){
-        	// Set this device as target of our query
-        	ZCALL( MEM_WRITE(Z502InterruptDevice, &device_id ) );
-        	// Now read the status of this device
-        	ZCALL( MEM_READ(Z502InterruptStatus, &Status ) );
+        // Get cause of interrupt
+        ZCALL( MEM_READ(Z502InterruptDevice, &device_id ) );
+        while(device_id != -1){
+            // Set this device as target of our query
+            ZCALL( MEM_WRITE(Z502InterruptDevice, &device_id ) );
+            // Now read the status of this device
+            ZCALL( MEM_READ(Z502InterruptStatus, &Status ) );
     
-        	CALL( add_to_eventQueue(&device_id, &Status) ); 
-        	ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
+            CALL( add_to_eventQueue(&device_id, &Status) ); 
+            ZCALL( MEM_WRITE(Z502InterruptClear, &Index ) );
 
-        	ZCALL( MEM_READ(Z502InterruptDevice, &device_id ) );
-   	 }
-	return;
+            ZCALL( MEM_READ(Z502InterruptDevice, &device_id ) );
+        }
+    return;
 }                                       /* End of interrupt_handler */
 
 /************************************************************************
@@ -114,13 +113,15 @@ void    interrupt_handler( void ) {
         The beginning of the OS502.  Used to receive hardware faults.
 ************************************************************************/
 
-void    fault_handler( void )
-    {
+void    fault_handler( void ) {
     INT32       device_id;
     INT32       status;
     INT32       Index = 0;
     INT32       frame = -1;
     INT16       call_type;
+    INT32	full=-1;
+
+    char	DATA[PGSIZE];
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
 
@@ -156,23 +157,29 @@ void    fault_handler( void )
         case(INVALID_MEMORY):
             //Check pageSize request
             CALL( check_pageSize( status ) );
-            CALL( frame = get_emptyFrame( status ) );
+            CALL( frame = handlePaging( status, &full ) );
 
-            //Set the address and valid bit of page error
-            Z502_PAGE_TBL_ADDR[status] = frame;
-            Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
             //Based on Call Type
             //MEMREAD or MEMWRITE
-            if( call_type == SYSNUM_MEM_READ ){
+           if( call_type == SYSNUM_MEM_READ ){
+          	Z502_PAGE_TBL_ADDR[status] = frame;
+            	Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT; 
                 ZCALL( MEM_READ( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
             }
-            else if( call_type == SYSNUM_MEM_WRITE ){
+            else if( call_type == SYSNUM_MEM_WRITE ){	
+          	Z502_PAGE_TBL_ADDR[status] = frame;
+            	Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
                 ZCALL( MEM_WRITE( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
+		
+//		if( full == 1){
+//			shadow_toDisk( 
+//
+//		}
+
             }
-	        printMemory(); 
+            printMemory(); 
             break;
     }
-
     printf( "Fault_handler: Found vector type %d with value %d\n",
                         device_id, status );
 
@@ -197,7 +204,7 @@ void    os_switch_context_complete( void )
     
     Z502_PAGE_TBL_ADDR = current_PCB->pageTable;
     Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
-//	printReady();
+//    printReady();
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print == TRUE )
@@ -236,7 +243,7 @@ void    os_init( void )
     {
     void                *next_context;
     INT32               i;
-    void				*procPTR;
+    void                *procPTR;
     
    /* Demonstrates how calling arguments are passed thru to here       */
     printf( "Program called with %d arguments:", CALLING_ARGC );
@@ -280,43 +287,43 @@ void    os_init( void )
         WAKEUPpo = 1;
         TERMINATEpo = 1;
     }
-    	
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1d" ) == 0 ) ){
+        
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1d" ) == 0 ) ){
         procPTR = test1d;
         CREATEpo = 1;
         SLEEPpo = 1;
         WAKEUPpo = 1;
         TERMINATEpo = 1;
-    }    	
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1e" ) == 0 ) ){
+    }        
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1e" ) == 0 ) ){
         procPTR = test1e;
         CREATEpo = 1;
         SUSPENDpo = 1;
         RESUMEpo = 1;
         TERMINATEpo = 1;
     }
-	    
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1f" ) == 0 ) ){
+        
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1f" ) == 0 ) ){
         procPTR = test1f;
         CREATEpo = 1;
         SUSPENDpo = 1;
         RESUMEpo = 1;
         TERMINATEpo = 1;
     }
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1g" ) == 0 ) ){
-		procPTR = test1g;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1g" ) == 0 ) ){
+        procPTR = test1g;
         CREATEpo = 1;
         PRIORITYpo = 1;
         TERMINATEpo = 1;
     }
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1h" ) == 0 ) ){
-		procPTR = test1h;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1h" ) == 0 ) ){
+        procPTR = test1h;
         CREATEpo = 1;
         PRIORITYpo = 1;
         TERMINATEpo = 1;
     }
-	else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1i" ) == 0 ) ){
-		procPTR = test1i;
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test1i" ) == 0 ) ){
+        procPTR = test1i;
         CREATEpo = 1;
         PRIORITYpo = 1;
         SENDpo = 1;
@@ -380,6 +387,11 @@ void    os_init( void )
         procPTR = test2e;
         TERMINATEpo = 1;
     }
+    else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2f" ) == 0 ) ){
+        procPTR = test2f;
+        TERMINATEpo = 1;
+    }
+ 
     else{
         printf("NO TEST SELECTED, HALT!!!");
         Z502_HALT();
@@ -387,7 +399,7 @@ void    os_init( void )
 
     //Initialize Page Table
     INT32 frame = 0;
-    while (frame <= PHYS_MEM_PGS-1){ 
+    while (frame < PHYS_MEM_PGS){ 
         FRAMETABLE_t *Table = (FRAMETABLE_t *)(malloc(sizeof(FRAMETABLE_t)));
         Table->p_id = -1;
         Table->page = -1;
@@ -408,7 +420,7 @@ void    os_init( void )
         frame++;
     }
     
-	// Create a new process, and switch to it.
+    // Create a new process, and switch to it.
     CALL( OS_Create_Process(CALLING_ARGV[1], procPTR, 0, &i, &i, 1) );
 }                                               /* End of os_init       */
 
@@ -422,59 +434,58 @@ void    os_init( void )
 *   and the function returns.
 *
 */
-
-INT32	OS_Create_Process( char * name, void * procPTR,
-		INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH){
+INT32    OS_Create_Process( char * name, void * procPTR,
+        INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH){
 
     //Check for illegal priority
-	if (priority < 0){
+    if (priority < 0){
         debugPrint("OS CREATE ERROR: ILLEGAL PRIORITY");
-		(*error) = ERR_BAD_PARAM;
-		return -1;
-	}
+        (*error) = ERR_BAD_PARAM;
+        return -1;
+    }
     //Check if input name is a duplicate
-	if (pidList != NULL){
-		if(check_name(&pidList, name) == 0){
-			debugPrint("OS CREATE ERROR: DUPLICATE NAME");
-			(*error) = ERR_BAD_PARAM;
-			return -1;
-		}	
-	}
-	//Check if MAX_PIDs (100) exceeded
-	if (total_pid >= MAX_PIDs){
-		debugPrint("OS CREATE ERROR: EXCEEDED MAX NUMBER OF PIDs");
-		(*error) = ERR_BAD_PARAM;
-		return -1;
-	}	
-	inc_pid++;
+    if (pidList != NULL){
+        if(check_name(&pidList, name) == 0){
+            debugPrint("OS CREATE ERROR: DUPLICATE NAME");
+            (*error) = ERR_BAD_PARAM;
+            return -1;
+        }    
+    }
+    //Check if MAX_PIDs (100) exceeded
+    if (total_pid >= MAX_PIDs){
+        debugPrint("OS CREATE ERROR: EXCEEDED MAX NUMBER OF PIDs");
+        (*error) = ERR_BAD_PARAM;
+        return -1;
+    }    
+    inc_pid++;
 
     //Checks are clear, make space and build PCB
     PCB_t *PCB = (PCB_t *)(malloc(sizeof(PCB_t)));
-	PCB->p_state = NEW_STATE;
-	PCB->p_id = inc_pid;
-	PCB->p_time = 0;
-	memset(PCB->p_name, 0, MAX_NAME+1);
-	strcpy(PCB->p_name,name);
-	PCB->p_priority = priority;
-	PCB->next = NULL;
-	PCB->prev = NULL;
+    PCB->p_state = NEW_STATE;
+    PCB->p_id = inc_pid;
+    PCB->p_time = 0;
+    memset(PCB->p_name, 0, MAX_NAME+1);
+    strcpy(PCB->p_name,name);
+    PCB->p_priority = priority;
+    PCB->next = NULL;
+    PCB->prev = NULL;
     PCB->msg_state = READY_MSG;
     PCB->disk = -1;
-	PCB->msg_count = 0;
+    PCB->msg_count = 0;
     
     //Set all values in pageTable to zero
     memset(PCB->pageTable, 0, VIRTUAL_MEM_PGS+1);
 
-	//If there is a process currently running (not first PCB)
+    //If there is a process currently running (not first PCB)
     //Set the new PCB's parent to the running process
-	if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
-	
-	//Add to Ready List
-	CALL( add_to_readyQueue(&pidList, PCB) );
+    if (current_PCB != NULL) PCB->p_parent = current_PCB->p_id;
+    
+    //Add to Ready List
+    CALL( add_to_readyQueue(&pidList, PCB) );
 
-	//Return Success and the ID to the OS
-	(*error) = ERR_SUCCESS;
-	(*pid) = PCB->p_id;
+    //Return Success and the ID to the OS
+    (*error) = ERR_SUCCESS;
+    (*pid) = PCB->p_id;
 
     //STATE PRINT OUT
     if( CREATEpo && DEBUGFLAG){
@@ -484,12 +495,12 @@ INT32	OS_Create_Process( char * name, void * procPTR,
         SP_print_line();
         printReady();
     }
-	
+    
     //SWITCH if first PCB, else make the context and return
-	if (SWITCH == 1) CALL( make_switch_Savecontext(PCB, procPTR) );
-	if (SWITCH != 1) CALL( make_context(PCB, procPTR) );
+    if (SWITCH == 1) CALL( make_switch_Savecontext(PCB, procPTR) );
+    if (SWITCH != 1) CALL( make_context(PCB, procPTR) );
 
-	return 0; 											
+    return 0;                                             
 }                                       /* End off OS_Create_Process */
 
 /************************************************************************
@@ -502,11 +513,11 @@ INT32	OS_Create_Process( char * name, void * procPTR,
 void    svc( void ) {
     INT16               call_type;
     static INT16        do_print = 0;
-    INT32				Time;
-    INT32 				sleepTime;
-    INT32				currentTime;
-    PCB_t				*temp;
-	PCB_t				*switchPCB;
+    INT32                Time;
+    INT32                 sleepTime;
+    INT32                currentTime;
+    PCB_t                *temp;
+    PCB_t                *switchPCB;
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
 
@@ -518,32 +529,32 @@ void    svc( void ) {
                 Z502_ARG5.VAL, Z502_ARG6.VAL );
         do_print--;
     }
-	//Check ISR event_count, Handle BEFORE system calls.
+    //Check ISR event_count, Handle BEFORE system calls.
     // CALLS THE EVENT HANDLER
-	if ( (event_count < 0) && (call_type != SYSNUM_TERMINATE_PROCESS) ){
-		CALL( eventHandler() );	
-	}
-	
+    if ( (event_count < 0) && (call_type != SYSNUM_TERMINATE_PROCESS) ){
+        CALL( eventHandler() );    
+    }
+    
     //Switch on SYS CALL TYPE
     switch (call_type){
-    	//Get time of day
-    	case SYSNUM_GET_TIME_OF_DAY:
-    		Time = get_currentTime();
-    		*(INT32 *)Z502_ARG1.PTR = Time;
-    		break;
-    	//Terminate a process
-    	case SYSNUM_TERMINATE_PROCESS:
-    		CALL( terminate_Process( (INT32)Z502_ARG1.VAL, (INT32*)Z502_ARG2.PTR ) );
-    		break;
-    	//Sleep Call
-    	case SYSNUM_SLEEP:
+        //Get time of day
+        case SYSNUM_GET_TIME_OF_DAY:
+            Time = get_currentTime();
+            *(INT32 *)Z502_ARG1.PTR = Time;
+            break;
+        //Terminate a process
+        case SYSNUM_TERMINATE_PROCESS:
+            CALL( terminate_Process( (INT32)Z502_ARG1.VAL, (INT32*)Z502_ARG2.PTR ) );
+            break;
+        //Sleep Call
+        case SYSNUM_SLEEP:
             //Get sleep and current time
-    		CALL( sleepTime = Z502_ARG1.VAL );
-    		CALL( currentTime = get_currentTime() );
+            CALL( sleepTime = Z502_ARG1.VAL );
+            CALL( currentTime = get_currentTime() );
             //PCB wakeUp time equal to their sum
-    		CALL( current_PCB->p_time = ( sleepTime + currentTime ) );
+            CALL( current_PCB->p_time = ( sleepTime + currentTime ) );
             //Move to the timer Queue
-    		CALL( readyQueue_to_timerQueue( current_PCB->p_id  ) );
+            CALL( readyQueue_to_timerQueue( current_PCB->p_id  ) );
 
             //State print out
             if ( SLEEPpo && DEBUGFLAG){
@@ -554,51 +565,51 @@ void    svc( void ) {
                 printTimer();       
             }
 
-    		//Start the timer if items are sleeping
+            //Start the timer if items are sleeping
             //Get the smallest wakeUp time, sleeptime = wakeUp - current
             //This value is returned by checkTimer
-    		CALL( sleepTime = checkTimer(currentTime) );
-			if (sleepTime > 0) CALL( Start_Timer( sleepTime ) );			
+            CALL( sleepTime = checkTimer(currentTime) );
+            if (sleepTime > 0) CALL( Start_Timer( sleepTime ) );            
 
             //Switch to New PCB or IDLE
             CALL( switchPCB = get_readyPCB() );
-			if (switchPCB == NULL) ZCALL( EVENT_IDLE() );
-    		if (switchPCB != NULL) CALL( switch_Savecontext(switchPCB) );
-    		break;
-    	//Create Process
-    	case SYSNUM_CREATE_PROCESS:
-    		CALL( OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR,
-    			(INT32)Z502_ARG3.VAL,(INT32*)Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0) );
-    		break;
-    	//Get Process ID
-    	case SYSNUM_GET_PROCESS_ID:
-    		CALL( get_PCB_ID(&pidList, (char *)Z502_ARG1.PTR,
-    				(INT32 *)Z502_ARG2.PTR, (INT32 *)Z502_ARG3.PTR) );
-    		break;
-    	//Suspend Process
-    	case SYSNUM_SUSPEND_PROCESS:
-    		CALL( suspend_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
-    		break;
-		//Resume Process
-    	case SYSNUM_RESUME_PROCESS:
-    		CALL( resume_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
-    		break;
-		//Change Priority
-    	case SYSNUM_CHANGE_PRIORITY:
-    		CALL( change_Priority((INT32)Z502_ARG1.VAL,(INT32)Z502_ARG2.VAL,
-    			(INT32*)Z502_ARG3.PTR));
-    		break;
-    	//Send Message
-    	case SYSNUM_SEND_MESSAGE:
-    		CALL( send_Message((INT32)Z502_ARG1.VAL,(char *)Z502_ARG2.PTR,
-    			(INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR) );
-    		break;
-    	//Receive Message
-    	case SYSNUM_RECEIVE_MESSAGE:            
-    		CALL( receive_Message((INT32)Z502_ARG1.VAL,(char *)Z502_ARG2.PTR,
-    			(INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR,
-    			(INT32 *)Z502_ARG6.PTR) );
-    		break;
+            if (switchPCB == NULL) ZCALL( EVENT_IDLE() );
+            if (switchPCB != NULL) CALL( switch_Savecontext(switchPCB) );
+            break;
+        //Create Process
+        case SYSNUM_CREATE_PROCESS:
+            CALL( OS_Create_Process((char*)Z502_ARG1.PTR, (void *)Z502_ARG2.PTR,
+                (INT32)Z502_ARG3.VAL,(INT32*)Z502_ARG4.PTR, (INT32*)Z502_ARG5.PTR, 0) );
+            break;
+        //Get Process ID
+        case SYSNUM_GET_PROCESS_ID:
+            CALL( get_PCB_ID(&pidList, (char *)Z502_ARG1.PTR,
+                    (INT32 *)Z502_ARG2.PTR, (INT32 *)Z502_ARG3.PTR) );
+            break;
+        //Suspend Process
+        case SYSNUM_SUSPEND_PROCESS:
+            CALL( suspend_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
+            break;
+        //Resume Process
+        case SYSNUM_RESUME_PROCESS:
+            CALL( resume_Process((INT32)Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR) );
+            break;
+        //Change Priority
+        case SYSNUM_CHANGE_PRIORITY:
+            CALL( change_Priority((INT32)Z502_ARG1.VAL,(INT32)Z502_ARG2.VAL,
+                (INT32*)Z502_ARG3.PTR));
+            break;
+        //Send Message
+        case SYSNUM_SEND_MESSAGE:
+            CALL( send_Message((INT32)Z502_ARG1.VAL,(char *)Z502_ARG2.PTR,
+                (INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR) );
+            break;
+        //Receive Message
+        case SYSNUM_RECEIVE_MESSAGE:            
+            CALL( receive_Message((INT32)Z502_ARG1.VAL,(char *)Z502_ARG2.PTR,
+                (INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR,
+                (INT32 *)Z502_ARG6.PTR) );
+            break;
         case SYSNUM_DISK_READ:
             CALL( read_Disk( Z502_ARG1.VAL, Z502_ARG2.VAL, Z502_ARG3.PTR) );
             break;
@@ -606,37 +617,37 @@ void    svc( void ) {
             CALL( write_Disk( Z502_ARG1.VAL, Z502_ARG2.VAL, Z502_ARG3.PTR) );
             break;
         //HALT IF CALL TYPE NOT RECOGNIZED
-		default:
-    		printf("ERROR! call_type not recognized!\n");
-    		printf("Entered Call_Type is %i\n", call_type);
-			ZCALL( Z502_HALT() );
-    		break;
-    }											// End of switch call_type
+        default:
+            printf("ERROR! call_type not recognized!\n");
+            printf("Entered Call_Type is %i\n", call_type);
+            ZCALL( Z502_HALT() );
+            break;
+    }                                            // End of switch call_type
 }                                               // End of svc
 // Helper function to check if duplicate name exists
 // on the Ready Queue
 INT32 check_name( PCB_t **ptrFirst, char *name ){
-	ZCALL( lockReady() );
-	PCB_t *ptrCheck = *ptrFirst;
+    ZCALL( lockReady() );
+    PCB_t *ptrCheck = *ptrFirst;
 
-	while (ptrCheck != NULL){
-		if(strcmp(ptrCheck->p_name, name) == 0){
+    while (ptrCheck != NULL){
+        if(strcmp(ptrCheck->p_name, name) == 0){
 
-			ZCALL( unlockReady() );
-			return 0;
-		}
-		ptrCheck = ptrCheck->next;
-	}
-	ZCALL( unlockReady() );
-	return 1;
+            ZCALL( unlockReady() );
+            return 0;
+        }
+        ptrCheck = ptrCheck->next;
+    }
+    ZCALL( unlockReady() );
+    return 1;
 }
 // Helper function that Starts the Timer for interrupt
-void Start_Timer(INT32 Time) {	
-	INT32		Status;
-	ZCALL ( HW_lock() );
-	ZCALL( MEM_WRITE( Z502TimerStart, &Time ) );
-	ZCALL( MEM_READ( Z502TimerStatus, &Status ) );
-	ZCALL ( HW_unlock() );
+void Start_Timer(INT32 Time) {    
+    INT32        Status;
+    ZCALL ( HW_lock() );
+    ZCALL( MEM_WRITE( Z502TimerStart, &Time ) );
+    ZCALL( MEM_READ( Z502TimerStatus, &Status ) );
+    ZCALL ( HW_unlock() );
 }
 /*
 * GET TIME OF DAY
@@ -646,11 +657,11 @@ void Start_Timer(INT32 Time) {
 *
 */
 INT32 get_currentTime( void ) {
-	INT32 	currentTime;
-	ZCALL ( HW_lock() );
-	ZCALL( MEM_READ( Z502ClockStatus, &currentTime ) );
-	ZCALL ( HW_unlock() );
-	return currentTime;
+    INT32     currentTime;
+    ZCALL ( HW_lock() );
+    ZCALL( MEM_READ( Z502ClockStatus, &currentTime ) );
+    ZCALL ( HW_unlock() );
+    return currentTime;
 }
 /*
 * EVENT HANDLER
@@ -663,17 +674,17 @@ INT32 get_currentTime( void ) {
 *
 */
 void eventHandler ( void ) {
-	EVENT_t *ptrCheck = eventList;
+    EVENT_t 		*ptrCheck = eventList;
 
-    INT32              interrupt;
-    INT32              eventID;	
-    INT32 			   currentTime;
-	INT32			   timeUp = 0;
-	INT32		       diskUp = 0;
-	INT32			   sleeptime;    
+    INT32			interrupt;
+    INT32			eventID;    
+    INT32			currentTime;
+    INT32			timeUp = 0;
+    INT32			diskUp = 0;
+    INT32			sleeptime;    
 
-	//Remove all Events from Queue
-	while (ptrCheck != NULL){
+    //Remove all Events from Queue
+    while (ptrCheck != NULL){
         interrupt = ptrCheck->device_ID;
         eventID = ptrCheck->id;
         CALL( rm_from_eventQueue(eventID) );
@@ -705,26 +716,26 @@ void eventHandler ( void ) {
             case(DISK_INTERRUPT_DISK12):
                 CALL( diskUp = diskHandler(ptrCheck->Status, interrupt - 4) );
                 diskUp += diskUp;
-		break;
-		}
-		ptrCheck = ptrCheck->next;
-	}
+        break;
+        }
+        ptrCheck = ptrCheck->next;
+    }
 
-	if( diskUp > 0 || timeUp > 0){
-		switch_Context();
-	} 
+    if( diskUp > 0 || timeUp > 0){
+        switch_Context();
+    } 
 
 }
 // Helper function, that is used to IDLE
 // If there are no events, Z502 IDLE is called,
 // otherwise the EVENT HANDLER is called
 void EVENT_IDLE ( void ) {
-	if (event_count == 0) CALL( Z502_IDLE() );
-	CALL( eventHandler() );
+    if (event_count == 0) CALL( Z502_IDLE() );
+    CALL( eventHandler() );
 }
 
 void switch_Context ( void ){
-    PCB_t              *switchPCB;
+    PCB_t			*switchPCB;
 
     if (total_pid <= 0) ZCALL( Z502_HALT() );
     CALL( switchPCB = get_readyPCB() );

@@ -32,11 +32,11 @@
 
         /*      These are Portability enhancements              */
 
-typedef         int                             INT32;
-typedef         unsigned int                   UINT32;
-typedef         short                           INT16;
-typedef         unsigned short                  UINT16;
-typedef         int                             BOOL;
+typedef         int							INT32;
+typedef         unsigned int				UINT32;
+typedef         short						INT16;
+typedef         unsigned short				UINT16;
+typedef         int							BOOL;
 
 #ifdef  NT
 #define THREAD_PRIORITY_LOW           THREAD_PRIORITY_BELOW_NORMAL
