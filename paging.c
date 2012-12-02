@@ -1,28 +1,51 @@
 /*
 *	This file contains all routines that handle paging
+*	as well as disks.
 *
-*	read_Disk()
-*	write_Disk()
+*	PAGE FAULT HANDLER
+*	DISK WRITE
+*	DISK READ
+*	DISK HANDLER
+*	
+*	It also manages the disk bitMap as well as the
+*	shadow table to keep track of disk and memory usage
 *
 */
 
-#include             "global.h"
-#include             "syscalls.h"
-#include             "protos.h"
-#include             "string.h"
+#include				"global.h"
+#include				"syscalls.h"
+#include				"protos.h"
+#include				"string.h"
 
-#include		"userdefs.h"
+#include				"userdefs.h"
 
 #define			MAXPGSIZE			1024
 
-UINT16        *Z502_PAGE_TBL_ADDR;
-INT16         Z502_PAGE_TBL_LENGTH;
-INT16	      SYS_CALL_CALL_TYPE;
+UINT16        	*Z502_PAGE_TBL_ADDR;
+INT16         	Z502_PAGE_TBL_LENGTH;
+INT16	      	SYS_CALL_CALL_TYPE;
 
+//Shadow Table INIT
 SHADOWTABLE_t	*shadowList = NULL;
-INT16		bitMap[MAX_DISKS][MAX_SECTORS] = {0};
+//Disk Map INIT
+INT16			bitMap[MAX_DISKS][MAX_SECTORS] = {0};
 
-INT32 handlePaging( INT32 pageRequest, INT32* full ){
+/*
+* HANDLE PAGE FAULT
+*
+*	On every page fault, this function is called. It finds a frame,
+*	that is either not been used, or based on the least recently
+*	used algorithm.
+*
+*	If the frame table is full and there is a page fault, additional
+*	Memory management is required. If the system is trying to write 
+*	to Memory, the original data must be written to disk and remembered
+*	(via Shadow Table). If the system is reading from memory, but the 
+*	page is not in a frame, the original data in the frame must be written
+*	to disk, and the requesting page is written back in to memory.
+*
+*/
+INT32 handlePaging( INT32 pageRequest ){
 	INT32 		frame = -1;
 	INT16 		call_type = -1;
 	FRAMETABLE_t	*tableReturn;
@@ -44,23 +67,29 @@ INT32 handlePaging( INT32 pageRequest, INT32* full ){
 	}
 	//Full Frame, handle memory and disks
 	else{
-		*full = 1;
 		if(call_type == SYSNUM_MEM_WRITE){
+			//Write memory to disk 
 			CALL( mem_toDisk(tableReturn, pageRequest) );
 		}
 		else if(call_type == SYSNUM_MEM_READ){
+			//Write memory to disk, and then replace memory
+			//with requesting data from disk
 			CALL( mem_toDisk(tableReturn, pageRequest) ); 
 			CALL( disk_toMem(tableReturn, pageRequest) );
 		}
 	}
 	return frame;
 }
+// Helper function that moves memory to disk
+// It adds the information to a Shadow table such that
+// it can be brought back to in to memory at a later time
 void mem_toDisk( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 
 	//Write current frame to disk
 	INT16	disk_id, sector;
 	//Find empty sector
 	CALL( get_emptyDisk(&disk_id, &sector) );
+
 	//Write info to shadow table
 	SHADOWTABLE_t *entry = (SHADOWTABLE_t *)(malloc(sizeof(SHADOWTABLE_t)));
 	entry->p_id = tableReturn->p_id;
@@ -71,19 +100,21 @@ void mem_toDisk( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 	entry->next = NULL;
 	CALL( add_to_Shadow(entry) );
 
-	//Read and Write Data
+	//Read and Write Data from Memory
 	char	DATA[PGSIZE];
 	Z502_PAGE_TBL_ADDR[tableReturn->page] = tableReturn->frame;
 	Z502_PAGE_TBL_ADDR[tableReturn->page] |= PTBL_VALID_BIT;
-
 	ZCALL( MEM_READ( (tableReturn->page*PGSIZE), (INT32*)DATA) );
-	//Clear page table
+	//Clear page table, will be set back in fault handler.
 	Z502_PAGE_TBL_ADDR[tableReturn->page] = 0;
-	//set new page
+	//Set new page and refTime in the page Table
 	CALL( updatePage(pageRequest, tableReturn->frame) );
-	//write Data to Disk
+	//Write Data to Disk
 	write_Disk( disk_id, sector, (char*)DATA);
 }
+// Helper function that moves disk to memory. It checks the 
+// Shadow Table to ensure the page and processID line up,
+// and then writes the data to memory.
 void disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 	SHADOWTABLE_t *ptrCheck;
 	INT16	disk_id, sector;
@@ -94,9 +125,12 @@ void disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 
 	ptrCheck = shadowList;
 	while(ptrCheck != NULL){
+		// If the page returned from get_frame matched shadow Table
+		// we must move the item in disk to memory.
 		if( ptrCheck->page == page && ptrCheck->p_id == ID){
+			//Read the Disk
 			read_Disk( ptrCheck->disk, ptrCheck->sector, DATA);
-
+			//Write to memory location
 			Z502_PAGE_TBL_ADDR[pageRequest] = tableReturn->frame;
 			Z502_PAGE_TBL_ADDR[pageRequest] |= PTBL_VALID_BIT;
 			ZCALL( MEM_WRITE(page*PGSIZE, (INT32*)DATA) );
@@ -106,15 +140,16 @@ void disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 	}
 	
 }
-
+// If page table is not full, this function will return the
+// next available frame
 INT32 get_emptyFrame( INT32 pageRequest ){
 	FRAMETABLE_t *ptrCheck = pageList;
-
 	while( ptrCheck != NULL ){
 		if(ptrCheck->page == -1){
 			ptrCheck->p_id = current_PCB->p_id;
 			ptrCheck->page = pageRequest;
 			ptrCheck->refTime = get_currentTime();
+
 			//Set the address and valid bit of page error
             Z502_PAGE_TBL_ADDR[pageRequest] = ptrCheck->frame;
             Z502_PAGE_TBL_ADDR[pageRequest] |= PTBL_VALID_BIT;
@@ -125,7 +160,8 @@ INT32 get_emptyFrame( INT32 pageRequest ){
 	//Table is Full
 	return -1;
 }
-
+// If page table is full, it will return the item in pageTable that
+// is least recently used (based on page stamp in table)
 FRAMETABLE_t *get_fullFrame( INT32 pageRequest ){
 	FRAMETABLE_t *ptrCheck = pageList;
 	FRAMETABLE_t *tableReturn;
@@ -149,6 +185,7 @@ FRAMETABLE_t *get_fullFrame( INT32 pageRequest ){
 	}
 	return tableReturn;
 }
+// Add a shadow table entry
 void add_to_Shadow( SHADOWTABLE_t *entry ){
 	SHADOWTABLE_t *ptrCheck = shadowList;
 
@@ -163,7 +200,8 @@ void add_to_Shadow( SHADOWTABLE_t *entry ){
 	}
 	ptrCheck->next = entry;
 }
-
+// Helper function used to restamp a page in the
+// page Table as well as update the page and ID.
 void updatePage(INT32 pageRequest, INT32 frame){
 	FRAMETABLE_t * ptrCheck = pageList;
 
@@ -172,11 +210,14 @@ void updatePage(INT32 pageRequest, INT32 frame){
 			ptrCheck->page = pageRequest;
 			ptrCheck->refTime = get_currentTime();
 			ptrCheck->p_id = current_PCB->p_id;
+			return;
 		}
 		ptrCheck = ptrCheck->next;
 	}
 }
-
+// Helper function to ensure pageRequest is within
+// proper limits. Terminates all process and children on
+// error
 void check_pageSize( INT32 pageSize ){
 	INT32	Index = 0;
 
@@ -189,7 +230,18 @@ void check_pageSize( INT32 pageSize ){
 		CALL( terminate_Process(-2, &Index) );
 	}
 }
-
+/*
+*
+* DISK READ
+*
+*	Reads from disk based on input disk_id and sector.
+*	It will wait until the disk is free to set the diskID,
+*	sector, and disk buffer. It sets the current PCB's disk
+*	item to the disk in use, starts the disk read, and 
+*	Suspends the process. It will be woken up by the 
+*	Event Handler (ISR).
+*
+*/
 void read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
 	INT32 	Temp = 0;
 	INT32	Temp1 = 0;
@@ -199,6 +251,7 @@ void read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
 
 	//ID, Sector, and Data
 	ZCALL( MEM_WRITE( Z502DiskSetID, &DISK) );
+	//Wait until Disk is free
     while( Temp != DEVICE_FREE )  {
         ZCALL( Z502_IDLE() );
         ZCALL( MEM_WRITE( Z502DiskSetID, &DISK) );       
@@ -216,7 +269,16 @@ void read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
     current_PCB->disk = disk_id;
     CALL( suspend_Process(-1, &Temp1) );
 }
-
+/*
+* DISK WRITE
+*
+*	Will write to disk based on disk_id and sector. It will wait 
+*	until the disk is free to set the diskID, sector, and disk 
+*	buffer. It sets the current PCB's disk item to the disk in use,
+*	starts the disk write, and suspends the process. It will be
+*	woken up by the Event Handler (ISR).
+*
+*/
 void write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
 	INT32	Temp = 0;
 	INT32	Temp1 = 0;
@@ -246,7 +308,19 @@ void write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
     current_PCB->disk = disk_id;    
     CALL( suspend_Process( -1, &Temp1) );
 }
-
+/*
+* DISK HANDLER
+*
+*	This function is called on every interrupt called by
+*	a disk. There are several cases than can be returned by
+*	the interrupt, as shown. But they are not currently
+*	required.
+*
+*	It calls wakeup_Disks, based on the disk that interrupted. 
+*	This will wake up processes who are using the disk that
+*	interrupted
+*
+*/
 INT32 diskHandler( INT32 diskStatus, INT32 disk ){
 	INT32 count;
 	CALL( count = wakeup_Disks(disk) );	
@@ -256,18 +330,20 @@ INT32 diskHandler( INT32 diskStatus, INT32 disk ){
 //			printf("ERR_SUCCESS\n");
 			break;
 		case(ERR_BAD_PARAM):
-			printf("ERR_BAD_PARAM\n");
+			debugPrint("ERR_BAD_PARAM");
 			break;
 		case(ERR_NO_PREVIOUS_WRITE):
-			printf("ERR_NO_PREVIOUS_WRITE\n");
+			debugPrint("ERR_NO_PREVIOUS_WRITE");
 			break;
 		case(ERR_DISK_IN_USE):
-			printf("ERR_DISK_IN_USE\n");
+			debugPrint("ERR_DISK_IN_USE");
 			break;
 	}
 	return count;
 }
-
+// Helper function that sets the process state to Ready,
+// and clears the disk in use flag in the PCB
+// It returns a wakeUp count
 INT32 wakeup_Disks(INT32 disk){
 	PCB_t 	*ptrCheck = pidList;
 	INT32	count = 0;
@@ -282,10 +358,10 @@ INT32 wakeup_Disks(INT32 disk){
 		}
 		ptrCheck = ptrCheck->next;
 	}
-	//printf("WOKE UP %d\n", count);
 	return count;
 }
-
+// Helper function that returns the disk and sector
+// that is free based on the disk bitMap 2D array
 void get_emptyDisk( INT16 *disk, INT16 *sector){
 	INT16 disks, sectors;
 

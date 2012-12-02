@@ -102,101 +102,93 @@ typedef 		struct {
 /*			FUNCTION CALLS				*/
 
 //Create Process
-INT32	OS_Create_Process( char *name, void *procPTR, 
-			INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
+INT32			OS_Create_Process( char *name, void *procPTR, 
+					INT32 priority, INT32 *pid, INT32 *error, INT32 SWITCH);
 //Contexts
-void 	make_context( PCB_t * PCB, void *procPTR);
-void 	make_switch_Savecontext( PCB_t * PCB, void *procPTR);
-void 	make_switch_Killcontext( PCB_t * PCB, void *procPTR);
-void 	switch_Killcontext( PCB_t * PCB );
-void 	switch_Savecontext ( PCB_t * PCB );
-void 	switch_Context ( void );
+void 			make_context( PCB_t * PCB, void *procPTR);
+void 			make_switch_Savecontext( PCB_t * PCB, void *procPTR);
+void 			make_switch_Killcontext( PCB_t * PCB, void *procPTR);
+void 			switch_Killcontext( PCB_t * PCB );
+void 			switch_Savecontext ( PCB_t * PCB );
+void 			switch_Context ( void );
 //Add Queues
-void 	add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry );
-void 	add_to_timerQueue ( PCB_t **ptrFirst, PCB_t *entry );
-void 	add_to_eventQueue ( INT32 *device_id, INT32 *status );
-INT32 	add_to_Queue( PCB_t **ptrFirst, PCB_t * entry);
+void 			add_to_readyQueue ( PCB_t **ptrFirst, PCB_t *entry );
+void 			add_to_timerQueue ( PCB_t **ptrFirst, PCB_t *entry );
+void 			add_to_eventQueue ( INT32 *device_id, INT32 *status );
+INT32 			add_to_Queue( PCB_t **ptrFirst, PCB_t * entry);
 //Remove Queues
-INT32 	rm_from_readyQueue ( INT32 remove_id );
-void 	rm_from_timerQueue ( PCB_t **ptrFirst, INT32 remove_id );
-void 	rm_from_eventQueue ( INT32 remove_id );
-PCB_t 	*rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id );
+INT32 			rm_from_readyQueue ( INT32 remove_id );
+void 			rm_from_timerQueue ( PCB_t **ptrFirst, INT32 remove_id );
+void 			rm_from_eventQueue ( INT32 remove_id );
+PCB_t 			*rm_from_Queue( PCB_t **ptrFirst, INT32 remove_id );
 //Move Queues
-void 	timerQueue_to_readyQueue( INT32 remove_id );
-void 	readyQueue_to_timerQueue( INT32 remove_id );
+void 			timerQueue_to_readyQueue( INT32 remove_id );
+void 			readyQueue_to_timerQueue( INT32 remove_id );
 //PCB Handle
-void 	change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error );
-INT32 	updatePriority ( INT32 process_ID, INT32 new_priority );
-void 	wait_to_Ready ( INT32 remove_id );
-void	ready_to_Running ( void );
-PCB_t 	*ready_to_Wait ( INT32 remove_id );
+void 			change_Priority( INT32 process_ID, INT32 new_priority, INT32 *error );
+INT32 			updatePriority ( INT32 process_ID, INT32 new_priority );
+void 			wait_to_Ready ( INT32 remove_id );
+void			ready_to_Running ( void );
+PCB_t 			*ready_to_Wait ( INT32 remove_id );
 //Sort Queues
-void 	timer_sort( void );
-void 	timerSwap( PCB_t *Prev, PCB_t *Curr );
-void 	ready_sort( void );
-void 	readySwap( PCB_t *Prev, PCB_t *Curr );
+void 			timer_sort( void );
+void 			timerSwap( PCB_t *Prev, PCB_t *Curr );
+void 			ready_sort( void );
+void 			readySwap( PCB_t *Prev, PCB_t *Curr );
 //Queue Helpers
-INT32 	check_name ( PCB_t **ptrFirst, char *name );
-INT32 	get_PCB_ID( PCB_t **ptrFirst, char *name, INT32 *process_ID, INT32 *error );
-INT32	check_pid_ID ( INT32 check_ID );
+INT32 			check_name ( PCB_t **ptrFirst, char *name );
+INT32 			get_PCB_ID( PCB_t **ptrFirst, char *name, INT32 *process_ID, INT32 *error );
+INT32			check_pid_ID ( INT32 check_ID );
 //Get PCB
-PCB_t 	*get_firstPCB(PCB_t ** ptrFirst);
-PCB_t 	*get_readyPCB( void );
+PCB_t 			*get_firstPCB(PCB_t ** ptrFirst);
+PCB_t 			*get_readyPCB( void );
 //Process Handle
-void 	terminate_Process( INT32 process_ID, INT32 *error );
-void 	rm_children ( PCB_t **ptrFirst, INT32 process_ID );
-void 	suspend_Process ( INT32 process_ID, INT32 *error );
-void 	resume_Process ( INT32 process_ID, INT32 *error );
+void 			terminate_Process( INT32 process_ID, INT32 *error );
+void 			rm_children ( PCB_t **ptrFirst, INT32 process_ID );
+void 			suspend_Process ( INT32 process_ID, INT32 *error );
+void 			resume_Process ( INT32 process_ID, INT32 *error );
 //Timer Functions
-INT32 	get_currentTime( void );
-INT32 	checkTimer ( INT32 currentTime );
-INT32 	wake_timerList ( INT32 currentTime );
-void	Start_Timer( INT32 Time );
+INT32 			get_currentTime( void );
+INT32 			checkTimer ( INT32 currentTime );
+INT32 			wake_timerList ( INT32 currentTime );
+void			Start_Timer( INT32 Time );
 //Debug
-void 	printTimer ( void );
-void	printReady ( void );
-void	printEvent ( void );
-void	printTable ( void );
-void	printMemory ( void );
-void 	debugPrint ( char * toprint );
+void 			printTimer ( void );
+void			printReady ( void );
+void			printEvent ( void );
+void			printTable ( void );
+void			printMemory ( void );
+void 			debugPrint ( char * toprint );
 //Idle
-void 	EVENT_IDLE ( void );
+void 			EVENT_IDLE ( void );
 //Handle Events
-void 	eventHandler ( void );
+void 			eventHandler ( void );
 //Handle Messages
-void 	send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error );
-void 	receive_Message ( INT32 src_ID, char *message,
- 			INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID, INT32 *error);
-MSG_t 	*get_outboxMessage ( INT32 src_ID );
-/* NOT CURRENTLY USED
-void 	exchange_Messages ( void );
-void 	sendMSG_to_all ( MSG_t * tosend );
-void 	sendMSG_to_one ( MSG_t * tosend );
-*/
-MSG_t 	*check_Inbox ( INT32 src_ID );
-/*NOT CURRENTLY USED
-void	 wakeUp_Messages ( void );
-*/
-void 	target_to_Receive ( INT32 dest_ID );
-void 	get_msg_Inbox ( char *message, INT32 *msg_sndLen, INT32 *sender_ID );
-void 	add_to_Inbox ( PCB_t *dest, MSG_t *msgRecv );
-INT32 	add_to_Outbox ( MSG_t *entry );
-void 	send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID );
+void 			send_Message ( INT32 dest_ID, char *message, INT32 msg_Len, INT32 *error );
+void 			receive_Message ( INT32 src_ID, char *message,
+ 					INT32 msg_rcvLen, INT32 *msg_sndLen, INT32 *sender_ID, INT32 *error);
+MSG_t 			*get_outboxMessage ( INT32 src_ID );
+MSG_t 			*check_Inbox ( INT32 src_ID );
+void 			target_to_Receive ( INT32 dest_ID );
+void 			get_msg_Inbox ( char *message, INT32 *msg_sndLen, INT32 *sender_ID );
+void 			add_to_Inbox ( PCB_t *dest, MSG_t *msgRecv );
+INT32 			add_to_Outbox ( MSG_t *entry );
+void 			send_if_dest_Receive( MSG_t *tosend, INT32 dest_ID );
 //Page Handlers
-INT32 	handlePaging( INT32 pageRequest, INT32 *full );
-void	check_pageSize( INT32 pageSize );
-INT32	get_emptyFrame( INT32 pageRequest );
+INT32 			handlePaging( INT32 pageRequest );
+void			check_pageSize( INT32 pageSize );
+INT32			get_emptyFrame( INT32 pageRequest );
 FRAMETABLE_t* 	get_fullFrame( INT32 pageRequest );
 //DISKS
-void 	write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] );
-void 	read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] );
-INT32 	diskHandler( INT32 diskStatus, INT32 disk );
-INT32 	wakeup_Disks( INT32 disk );
-void 	get_emptyDisk( INT16 *disk, INT16 *sector);
-void 	add_to_Shadow( SHADOWTABLE_t *entry );
-void 	updatePage(INT32 pageRequest, INT32 frame);
-void	mem_toDisk( FRAMETABLE_t *tableReturn, INT32 pageRequest );
-void	disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest );
+void 			write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] );
+void 			read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] );
+INT32 			diskHandler( INT32 diskStatus, INT32 disk );
+INT32 			wakeup_Disks( INT32 disk );
+void 			get_emptyDisk( INT16 *disk, INT16 *sector);
+void 			add_to_Shadow( SHADOWTABLE_t *entry );
+void 			updatePage(INT32 pageRequest, INT32 frame);
+void			mem_toDisk( FRAMETABLE_t *tableReturn, INT32 pageRequest );
+void			disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest );
 
 /*			Global variables			*/
 extern 		PCB_t 			*current_PCB;

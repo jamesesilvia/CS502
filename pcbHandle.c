@@ -1,6 +1,6 @@
 /*
 *	This file contains all routines that handles the PCB 
-*	upriorities. And helper functions to change states
+*	priorities. And helper functions to change states
 *
 *	CHANGE PRIORITY
 *

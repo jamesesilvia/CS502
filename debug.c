@@ -94,12 +94,12 @@ void printTable( void ){
             printf("Time: %d\n", ptrCheck->refTime);            
         }
         ptrCheck = ptrCheck->next;
-    }
-    printf("----------------------------------------------------\n");
+    }    
 }
+//Print Shadow Table
 void printShadow( void ){
     SHADOWTABLE_t *ptrCheck = shadowList;
-    printf("SHADOWWWWWWWW TABBBBBBBLLLLLLLLLLEEEEEEEE\n");
+    printf("\n----------------SHADWOW TABLE QUEUE----------------\n");
     while(ptrCheck != NULL){
 	printf("ID: %d\t", ptrCheck->p_id);
 	printf("page: %d\t", ptrCheck->page);
@@ -116,7 +116,7 @@ void debugPrint ( char * toprint ){
         printf("%s\n", toprint);
     }
 }
-
+//Print memory usage
 void printMemory ( void  ){
     FRAMETABLE_t     *ptrCheck;
     ptrCheck = pageList;

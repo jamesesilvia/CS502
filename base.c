@@ -94,6 +94,7 @@ void    interrupt_handler( void ) {
 
         // Get cause of interrupt
         ZCALL( MEM_READ(Z502InterruptDevice, &device_id ) );
+        //Loop interrupts until there are no more, add all to the event Queue
         while(device_id != -1){
             // Set this device as target of our query
             ZCALL( MEM_WRITE(Z502InterruptDevice, &device_id ) );
@@ -114,14 +115,12 @@ void    interrupt_handler( void ) {
 ************************************************************************/
 
 void    fault_handler( void ) {
-    INT32       device_id;
-    INT32       status;
-    INT32       Index = 0;
-    INT32       frame = -1;
-    INT16       call_type;
-    INT32	full=-1;
-
-    char	DATA[PGSIZE];
+    INT32           device_id;
+    INT32           status;
+    INT32           Index = 0;
+    INT32           frame = -1;
+    INT16           call_type;
+    char            DATA[PGSIZE];
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
 
@@ -140,7 +139,7 @@ void    fault_handler( void ) {
     } 
        
     //Switch case on fault device ID.
-    //Terminate Process and children on fault catch
+    //Terminate Process and children on CPU and privledge instruction
     switch(device_id){
         case(CPU_ERROR):
             debugPrint("CPU ERROR");
@@ -155,28 +154,23 @@ void    fault_handler( void ) {
             MEM_WRITE(Z502InterruptClear, &Index );
             break;
         case(INVALID_MEMORY):
-            //Check pageSize request
+            //Check page request
             CALL( check_pageSize( status ) );
-            CALL( frame = handlePaging( status, &full ) );
+            //Get frame and manage memory/disks
+            CALL( frame = handlePaging( status ) );
 
+            //Setup address with frame and valid bit
+            Z502_PAGE_TBL_ADDR[status] = frame;
+            Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
             //Based on Call Type
             //MEMREAD or MEMWRITE
-           if( call_type == SYSNUM_MEM_READ ){
-          	Z502_PAGE_TBL_ADDR[status] = frame;
-            	Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT; 
+           if( call_type == SYSNUM_MEM_READ ){          	 
                 ZCALL( MEM_READ( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
             }
-            else if( call_type == SYSNUM_MEM_WRITE ){	
-          	Z502_PAGE_TBL_ADDR[status] = frame;
-            	Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
+            else if( call_type == SYSNUM_MEM_WRITE ){
                 ZCALL( MEM_WRITE( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
-		
-//		if( full == 1){
-//			shadow_toDisk( 
-//
-//		}
-
             }
+            //Print memory that is being used.
             printMemory(); 
             break;
     }
@@ -197,14 +191,13 @@ void    fault_handler( void ) {
 
 void    os_switch_context_complete( void )
     {
-    static INT16        do_print = TRUE;
+    static INT16        do_print = FALSE;
     INT16               call_type;
     MSG_t*              Message;
 
-    
+    //Set the page table address to the current PCB's table    
     Z502_PAGE_TBL_ADDR = current_PCB->pageTable;
     Z502_PAGE_TBL_LENGTH = VIRTUAL_MEM_PGS;
-//    printReady();
 
     call_type = (INT16)SYS_CALL_CALL_TYPE;
     if ( do_print == TRUE )
@@ -222,14 +215,6 @@ void    os_switch_context_complete( void )
         CALL( get_msg_Inbox((char *)Z502_ARG2.PTR,(INT32 *)Z502_ARG4.PTR,
             (INT32 *)Z502_ARG5.PTR) );
    }
-/*   if (call_type == SYSNUM_DISK_WRITE){
-        CALL( write_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL,
-                (char *)Z502_ARG3.PTR) );
-   }*/
-/*   if (call_type == SYSNUM_DISK_READ){
-        CALL( read_Disk( (INT32)Z502_ARG1.VAL, (INT32)Z502_ARG2.VAL, 
-                (char *)Z502_ARG3.PTR) );
-   }*/
 }                               /* End of os_switch_context_complete */
 
 /************************************************************************
@@ -391,6 +376,10 @@ void    os_init( void )
         procPTR = test2f;
         TERMINATEpo = 1;
     }
+    else if (( CALLING_ARGC > 1) && (strcmp( CALLING_ARGV[1], "test2g" ) == 0 ) ){
+        procPTR = test2g;
+        TERMINATEpo = 1;
+    }
  
     else{
         printf("NO TEST SELECTED, HALT!!!");
@@ -407,7 +396,7 @@ void    os_init( void )
         Table->refTime = -1;
         Table->next = NULL;
 
-        FRAMETABLE_t * ptrCheck = pageList;     
+        FRAMETABLE_t *ptrCheck = pageList;     
         if (ptrCheck == NULL){
             pageList = Table;
         }
@@ -610,9 +599,11 @@ void    svc( void ) {
                 (INT32)Z502_ARG3.VAL,(INT32 *)Z502_ARG4.PTR,(INT32 *)Z502_ARG5.PTR,
                 (INT32 *)Z502_ARG6.PTR) );
             break;
+        //Disk Read
         case SYSNUM_DISK_READ:
             CALL( read_Disk( Z502_ARG1.VAL, Z502_ARG2.VAL, Z502_ARG3.PTR) );
             break;
+        //Disk Write
         case SYSNUM_DISK_WRITE:
             CALL( write_Disk( Z502_ARG1.VAL, Z502_ARG2.VAL, Z502_ARG3.PTR) );
             break;
@@ -714,13 +705,14 @@ void eventHandler ( void ) {
             case(DISK_INTERRUPT_DISK10):
             case(DISK_INTERRUPT_DISK11):
             case(DISK_INTERRUPT_DISK12):
+                //Call disk Handler for all disk interrupts
                 CALL( diskUp = diskHandler(ptrCheck->Status, interrupt - 4) );
                 diskUp += diskUp;
         break;
         }
         ptrCheck = ptrCheck->next;
     }
-
+    //If any items were wokenUp from timer or disks, check for context switch
     if( diskUp > 0 || timeUp > 0){
         switch_Context();
     } 
@@ -733,7 +725,7 @@ void EVENT_IDLE ( void ) {
     if (event_count == 0) CALL( Z502_IDLE() );
     CALL( eventHandler() );
 }
-
+// Helper function used to switch contexts
 void switch_Context ( void ){
     PCB_t			*switchPCB;
 
