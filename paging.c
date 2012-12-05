@@ -139,6 +139,7 @@ void disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 			Z502_PAGE_TBL_ADDR[pageRequest] |= PTBL_VALID_BIT;
 			ZCALL( MEM_WRITE(page*PGSIZE, (INT32*)DATA) );
 			rm_fromShadow( ptrCheck->count );
+			Z502_PAGE_TBL_ADDR[pageRequest] = 0;
 			return;
 		}	
 		ptrCheck = ptrCheck->next;
@@ -250,8 +251,8 @@ void rm_fromShadow( INT32 removeID ){
 		ptrCheck = ptrCheck->next;
 	}
 }
-// Helper function used to restamp a page in the
-// page Table as well as update the page and ID.
+// Helper function used to restamp the page in the
+// frame Table as well as update the ID.
 void updatePage(INT32 pageRequest, INT32 frame){
 	FRAMETABLE_t * ptrCheck = pageList;
 
@@ -265,8 +266,8 @@ void updatePage(INT32 pageRequest, INT32 frame){
 		ptrCheck = ptrCheck->next;
 	}
 }
-// Helper function used to restamp a page in the
-// page Table as well as update the page and ID.
+// Helper function used to restamp the time in the
+// frameTable as well as update the ID.
 void updateTime(INT32 frame){
 	FRAMETABLE_t * ptrCheck = pageList;
 

@@ -205,6 +205,10 @@ extern		INT32			event_count;
 extern		INT32			inc_event;
 extern		INT32			inc_shadow;
 extern		SHADOWTABLE_t	*shadowList;
+
+extern		INT32			LRU;
+extern		INT32			FIFO;
+
 		
 extern		INT16			bitMap[MAX_DISKS][MAX_SECTORS];
 
@@ -219,7 +223,4 @@ extern		INT32			PRIORITYpo;
 extern		INT32			SENDpo;
 extern		INT32			RECEIVEpo;
 extern		INT32			FAULTpo;
-extern		INT32			LRU;
-extern		INT32			FIFO;
-
 
