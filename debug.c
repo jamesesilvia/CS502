@@ -130,4 +130,32 @@ void printMemory ( void  ){
     }
     MP_print_line(); 
 }
+void printState ( char action[SP_LENGTH_OF_ACTION]){
+    PCB_t *ptrCheck = pidList;
+
+    CALL( SP_setup( SP_TIME_MODE, get_currentTime() ) );
+    CALL( SP_setup_action( SP_ACTION_MODE, action ) );
+
+    CALL( SP_setup( SP_TARGET_MODE, current_PCB->p_id ) );
+    while(ptrCheck!= NULL){
+        CALL( SP_setup( SP_RUNNING_MODE, current_PCB->p_id ) );
+        switch(ptrCheck->p_state){
+            case(NEW_STATE):
+                CALL( SP_setup( SP_NEW_MODE, current_PCB->p_id  ) );
+                break;
+            case(READY_STATE):
+                CALL( SP_setup( SP_READY_MODE, ptrCheck->p_id  ) ); 
+                break;
+            case(WAITING_STATE):
+                CALL( SP_setup( SP_WAITING_MODE, ptrCheck->p_id ) );
+                break;
+            case(SUSPENDED_STATE):
+                CALL( SP_setup( SP_SUSPENDED_MODE, ptrCheck->p_id ) );
+                break;
+        }
+        ptrCheck = ptrCheck->next;
+    }
+    CALL( SP_print_header() );
+    CALL( SP_print_line() );
+}
 

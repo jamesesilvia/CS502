@@ -451,7 +451,7 @@ void    sample_code( void )
 
     CALL( SP_setup( SP_TIME_MODE, 99999 ) );
     CALL( SP_setup_action( SP_ACTION_MODE, "CREATE" ) );
-    CALL( SP_setup( SP_TARGET_MODE, 99L ) );
+    CALL( SP_setup( SP_TARGET_MODE, 99L) );
     CALL( SP_setup( SP_RUNNING_MODE, 99L ) );
     for ( j= 0 ; j< SP_MAX_NUMBER_OF_PIDS; j++ )
         CALL( SP_setup( SP_READY_MODE, j ) );

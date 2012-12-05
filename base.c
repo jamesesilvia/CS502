@@ -65,6 +65,9 @@ INT32			inc_pid = 0;
 INT32			total_pid = 0;
 INT32			event_count = 0;
 INT32			inc_event = 0;
+INT32           LRU = 0;
+INT32           FIFO = 0;
+
 
 INT32			CREATEpo = 0;
 INT32			TERMINATEpo = 0;
@@ -160,8 +163,10 @@ void    fault_handler( void ) {
             CALL( frame = handlePaging( status ) );
 
             //Setup address with frame and valid bit
+            printf("SETTING FRAME TO: %d\n", frame);
             Z502_PAGE_TBL_ADDR[status] = frame;
             Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
+            
             //Based on Call Type
             //MEMREAD or MEMWRITE
            if( call_type == SYSNUM_MEM_READ ){          	 
@@ -378,6 +383,11 @@ void    os_init( void )
     }
     else if (( CALLING_ARGC > 1) && (strcmp( CALLING_ARGV[1], "test2g" ) == 0 ) ){
         procPTR = test2g;
+        TERMINATEpo = 1;
+    }
+    else if (( CALLING_ARGC > 1) && (strcmp( CALLING_ARGV[1], "test2h" ) == 0 ) ){
+        procPTR = test2h;
+        LRU = 1;
         TERMINATEpo = 1;
     }
  

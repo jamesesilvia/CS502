@@ -29,6 +29,7 @@ INT16	      	SYS_CALL_CALL_TYPE;
 SHADOWTABLE_t	*shadowList = NULL;
 //Disk Map INIT
 INT16			bitMap[MAX_DISKS][MAX_SECTORS] = {0};
+INT32			inc_shadow = 0;
 
 /*
 * HANDLE PAGE FAULT
@@ -49,6 +50,7 @@ INT32 handlePaging( INT32 pageRequest ){
 	INT32 		frame = -1;
 	INT16 		call_type = -1;
 	FRAMETABLE_t	*tableReturn;
+	INT32		check = -1;
 	
 	call_type = (INT16)SYS_CALL_CALL_TYPE;
 
@@ -119,6 +121,8 @@ void disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 	SHADOWTABLE_t *ptrCheck;
 	INT16	disk_id, sector;
 	char	DATA[PGSIZE];
+	memset(&DATA[0], 0, sizeof(DATA));
+	
 
 	INT32 ID = tableReturn->p_id;
 	INT32 page = tableReturn->page;
@@ -134,6 +138,7 @@ void disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 			Z502_PAGE_TBL_ADDR[pageRequest] = tableReturn->frame;
 			Z502_PAGE_TBL_ADDR[pageRequest] |= PTBL_VALID_BIT;
 			ZCALL( MEM_WRITE(page*PGSIZE, (INT32*)DATA) );
+			rm_fromShadow( ptrCheck->count );
 			return;
 		}	
 		ptrCheck = ptrCheck->next;
@@ -148,14 +153,15 @@ INT32 get_emptyFrame( INT32 pageRequest ){
 		if(ptrCheck->page == -1){
 			ptrCheck->p_id = current_PCB->p_id;
 			ptrCheck->page = pageRequest;
-			ptrCheck->refTime = get_currentTime();
+			CALL( updateTime(ptrCheck->frame) );
+			FIFO++;
 
 			//Set the address and valid bit of page error
             Z502_PAGE_TBL_ADDR[pageRequest] = ptrCheck->frame;
             Z502_PAGE_TBL_ADDR[pageRequest] |= PTBL_VALID_BIT;
 			return ptrCheck->frame;
 		}
-		ptrCheck = ptrCheck->next;
+		ptrCheck = ptrCheck->next;	
 	}
 	//Table is Full
 	return -1;
@@ -170,24 +176,41 @@ FRAMETABLE_t *get_fullFrame( INT32 pageRequest ){
 	INT32	frame = -1;
 	INT32	ID, page;
 
-	while( ptrCheck != NULL ){
-		if( smallestTime == -1){
-			smallestTime = ptrCheck->refTime;
-			tableReturn = ptrCheck;
-		}
-		else{
-			if( smallestTime > ptrCheck->refTime ){
+	//Least Recently Used
+	if( LRU == 1){
+		while( ptrCheck != NULL ){
+			if( smallestTime == -1){
 				smallestTime = ptrCheck->refTime;
 				tableReturn = ptrCheck;
 			}
+			else{
+				if( smallestTime > ptrCheck->refTime ){
+					smallestTime = ptrCheck->refTime;
+					tableReturn = ptrCheck;
+				}
+			}
+		ptrCheck = ptrCheck->next;		
 		}
-		ptrCheck = ptrCheck->next;
+		CALL( updateTime(tableReturn->frame) );
+		return tableReturn;
 	}
-	return tableReturn;
+	//FIFO
+	else{
+		while( ptrCheck != NULL){
+			if (ptrCheck->frame == (FIFO % PHYS_MEM_PGS) ){
+				tableReturn = ptrCheck;
+				FIFO++;
+				return tableReturn;
+			}
+			ptrCheck = ptrCheck->next;			
+		}
+	}
 }
 // Add a shadow table entry
 void add_to_Shadow( SHADOWTABLE_t *entry ){
 	SHADOWTABLE_t *ptrCheck = shadowList;
+	inc_shadow++;
+	entry->count = inc_shadow;
 
 	//First Entry
 	if( ptrCheck == NULL){
@@ -200,6 +223,33 @@ void add_to_Shadow( SHADOWTABLE_t *entry ){
 	}
 	ptrCheck->next = entry;
 }
+// Remove shadow table entry
+void rm_fromShadow( INT32 removeID ){
+	SHADOWTABLE_t *ptrCheck = shadowList;
+	SHADOWTABLE_t *ptrPrev = NULL;
+
+	while(ptrCheck != NULL){
+		if(ptrCheck->count == removeID){
+			if(ptrPrev == NULL){
+				shadowList = ptrCheck->next;
+				free(ptrCheck);
+				return;
+			}
+			else if (ptrCheck->next == NULL){
+				ptrPrev->next = NULL;
+				free(ptrCheck);
+				return;
+			}
+			else{
+				ptrPrev->next = ptrCheck->next;
+				free(ptrCheck);
+				return;
+			}
+		}
+		ptrPrev = ptrCheck;
+		ptrCheck = ptrCheck->next;
+	}
+}
 // Helper function used to restamp a page in the
 // page Table as well as update the page and ID.
 void updatePage(INT32 pageRequest, INT32 frame){
@@ -208,7 +258,21 @@ void updatePage(INT32 pageRequest, INT32 frame){
 	while( ptrCheck != NULL){
 		if (ptrCheck->frame == frame){
 			ptrCheck->page = pageRequest;
-			ptrCheck->refTime = get_currentTime();
+//			CALL( ptrCheck->refTime = get_currentTime() );
+			ptrCheck->p_id = current_PCB->p_id;
+			return;
+		}
+		ptrCheck = ptrCheck->next;
+	}
+}
+// Helper function used to restamp a page in the
+// page Table as well as update the page and ID.
+void updateTime(INT32 frame){
+	FRAMETABLE_t * ptrCheck = pageList;
+
+	while( ptrCheck != NULL){
+		if (ptrCheck->frame == frame){
+			CALL( ptrCheck->refTime = get_currentTime() );
 			ptrCheck->p_id = current_PCB->p_id;
 			return;
 		}
@@ -248,6 +312,7 @@ void read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
 
 	INT32 	DISK = disk_id;
 	INT32	SECT = sector;
+	memset(&DATA[0], 0, sizeof(DATA));
 
 	//ID, Sector, and Data
 	ZCALL( MEM_WRITE( Z502DiskSetID, &DISK) );

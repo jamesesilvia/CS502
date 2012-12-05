@@ -62,6 +62,7 @@ void   test2d( void );
 void   test2e( void );
 void   test2f( void );
 void   test2g( void );
+void   test2h( void );
 void   get_skewed_random_number( long *, long );
 
 

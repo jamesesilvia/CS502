@@ -91,6 +91,7 @@ typedef 		struct {
 
 //ShadowTable TYPEDEF
 typedef 		struct {
+	INT32					count;
 	INT32					p_id;
 	INT32					page;
 	INT32					frame;
@@ -186,9 +187,11 @@ INT32 			diskHandler( INT32 diskStatus, INT32 disk );
 INT32 			wakeup_Disks( INT32 disk );
 void 			get_emptyDisk( INT16 *disk, INT16 *sector);
 void 			add_to_Shadow( SHADOWTABLE_t *entry );
+void 			rm_fromShadow( INT32 removeID );
 void 			updatePage(INT32 pageRequest, INT32 frame);
 void			mem_toDisk( FRAMETABLE_t *tableReturn, INT32 pageRequest );
 void			disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest );
+void 			updateTime(INT32 frame);
 
 /*			Global variables			*/
 extern 		PCB_t 			*current_PCB;
@@ -200,6 +203,7 @@ extern		INT32			total_pid;
 extern		FRAMETABLE_t 	*pageList;
 extern		INT32			event_count;
 extern		INT32			inc_event;
+extern		INT32			inc_shadow;
 extern		SHADOWTABLE_t	*shadowList;
 		
 extern		INT16			bitMap[MAX_DISKS][MAX_SECTORS];
@@ -215,5 +219,7 @@ extern		INT32			PRIORITYpo;
 extern		INT32			SENDpo;
 extern		INT32			RECEIVEpo;
 extern		INT32			FAULTpo;
+extern		INT32			LRU;
+extern		INT32			FIFO;
 
 

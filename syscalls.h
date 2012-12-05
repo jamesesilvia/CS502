@@ -288,7 +288,7 @@ extern int      BaseThread();
 
 #define         SP_NUMBER_OF_STATES     SP_TERMINATED_MODE-SP_NEW_MODE+1
 #define         SP_MAX_NUMBER_OF_PIDS   (INT16)10
-#define         SP_LENGTH_OF_ACTION     (INT16)16
+#define         SP_LENGTH_OF_ACTION     (INT16)8
 
 
 /*      This string is printed out when requested as the header         */

@@ -125,50 +125,14 @@ void SP_setup( INT16 mode, INT32 data )
                             
              SP_target_pid      = (INT16)data;
              break;
-        case SP_NEW_MODE:
-            SP_setup_action( SP_ACTION_MODE, "NEW" );
-            SP_target_pid      = (INT16)data;
-            break;       
-        case SP_READY_MODE:
-            SP_setup_action( SP_ACTION_MODE, "READY" );
-            SP_target_pid      = (INT16)data;
-            break;  
-        case SP_WAKEUP_MODE:
-            SP_setup_action( SP_ACTION_MODE, "WAKEUP" );
-            SP_target_pid      = (INT16)data;
-            break;
+        case SP_NEW_MODE:       
+        case SP_READY_MODE:   
         case SP_RUNNING_MODE:
-            SP_setup_action( SP_ACTION_MODE, "RUNNING" );
-            break;     
         case SP_WAITING_MODE:
-            SP_setup_action( SP_ACTION_MODE, "WAITING" );
-            break; 
         case SP_SUSPENDED_MODE:
-            SP_setup_action( SP_ACTION_MODE, "SUSPEND" ); 
-            break;
-        case SP_RESUME_MODE:
-            SP_setup_action ( SP_ACTION_MODE, "RESUME" );
-            break;
-        case SP_PRIORITY_MODE:
-            SP_setup_action ( SP_ACTION_MODE, "PRIORITY" );
-            SP_priority      = (INT16)data;
-            break;
-        case SP_SWAPPED_MODE:
-            SP_setup_action( SP_ACTION_MODE, "SWITCH" );
-            break;
-        case SP_SEND_MODE:
-            SP_setup_action( SP_ACTION_MODE, "SEND MSG" );
-            break;
-        case SP_RECEIVE_MODE:
-            SP_setup_action( SP_ACTION_MODE, "RECV MSG" );
-            break;
-        case SP_FAULT_MODE:
-            SP_setup_action( SP_ACTION_MODE, "FAULT" );
-            SP_target_pid      = (INT16)data;
-            break;
+        case SP_SWAPPED_MODE: 
         case SP_TERMINATED_MODE:   
-             SP_setup_action( SP_ACTION_MODE, "TERMINATE" );
-             if ( data < 0 || data > 200 )
+             if ( data < 0 || data > 99 )
                  {
                   printf( "Expected PID not in range 0 - 99 in SP_setup.\n" );
                   return;
@@ -234,15 +198,12 @@ void    SP_print_line( void )
         sprintf( output_line, "%5d", current_time % 10000 );
     }
 
-    sprintf( temp, " %3d\t", SP_target_pid );            /* Target Pid   */
+    sprintf( temp, " %3d ", SP_target_pid );            /* Target Pid   */
     if ( SP_target_pid < 0 )
         sprintf( temp, "%s", "     " );
     (void)strcat( output_line, temp );
 
     sprintf( temp, "  %8s", SP_action );                 /* Action       */
-    (void)strcat( output_line, temp );
-
-    sprintf( temp, "  %8d\t", SP_priority );                 /* Action       */
     (void)strcat( output_line, temp );
 
     index = SP_RUNNING_MODE - SP_STATE_MODE_START;      /* Running proc.*/
@@ -294,7 +255,6 @@ void    SP_print_line( void )
     SP_time = -1;
     strcpy( SP_action, "" );
     SP_target_pid = -1;
-    SP_priority = -1;
     for ( index = 0 ; index <= SP_TERMINATED_MODE - SP_NEW_MODE; index++ )
         SP_number_of_pids[ index ] = 0;
 
