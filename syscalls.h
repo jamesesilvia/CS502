@@ -294,4 +294,4 @@ extern int      BaseThread();
 /*      This string is printed out when requested as the header         */
 
 #define         SP_HEADER_STRING        \
-" Time   ID         Action      NewPriority       Done \n"
+" Time Target Action  Run New Done       State Populations \n"

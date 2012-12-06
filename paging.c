@@ -139,7 +139,6 @@ void disk_toMem( FRAMETABLE_t *tableReturn, INT32 pageRequest ){
 			Z502_PAGE_TBL_ADDR[pageRequest] |= PTBL_VALID_BIT;
 			ZCALL( MEM_WRITE(page*PGSIZE, (INT32*)DATA) );
 			rm_fromShadow( ptrCheck->count );
-			Z502_PAGE_TBL_ADDR[pageRequest] = 0;
 			return;
 		}	
 		ptrCheck = ptrCheck->next;
@@ -176,9 +175,11 @@ FRAMETABLE_t *get_fullFrame( INT32 pageRequest ){
 	INT32	smallestTime = -1;
 	INT32	frame = -1;
 	INT32	ID, page;
+	INT32	check;
+	long	Value;
 
 	//Least Recently Used
-	if( LRU == 1){
+	if( LRU == 1 ){
 		while( ptrCheck != NULL ){
 			if( smallestTime == -1){
 				smallestTime = ptrCheck->refTime;
@@ -186,8 +187,11 @@ FRAMETABLE_t *get_fullFrame( INT32 pageRequest ){
 			}
 			else{
 				if( smallestTime > ptrCheck->refTime ){
-					smallestTime = ptrCheck->refTime;
-					tableReturn = ptrCheck;
+					CALL( check = checkref_Bit(ptrCheck->page) );
+					if (check == 1){
+						tableReturn = ptrCheck;
+					}
+					smallestTime = ptrCheck->refTime;					
 				}
 			}
 		ptrCheck = ptrCheck->next;		
@@ -195,9 +199,19 @@ FRAMETABLE_t *get_fullFrame( INT32 pageRequest ){
 		CALL( updateTime(tableReturn->frame) );
 		return tableReturn;
 	}
+	//Random Frame
+	else if ( RAND == 1 ){
+		CALL( get_skewed_random_number( &Value, 63) );
+		while( ptrCheck != NULL){
+			if( Value == ptrCheck->frame ){
+				return ptrCheck;
+			}
+			ptrCheck = ptrCheck->next;
+		}
+	}
 	//FIFO
 	else{
-		while( ptrCheck != NULL){
+		while( ptrCheck != NULL ){
 			if (ptrCheck->frame == (FIFO % PHYS_MEM_PGS) ){
 				tableReturn = ptrCheck;
 				FIFO++;
@@ -315,6 +329,10 @@ void read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
 	INT32	SECT = sector;
 	memset(&DATA[0], 0, sizeof(DATA));
 
+	if( SCHEDULEpo && (PRINT_COUNT % SCHEDULE_GRAN == 0) ){
+		printState("DISK_R");
+	}
+
 	//ID, Sector, and Data
 	ZCALL( MEM_WRITE( Z502DiskSetID, &DISK) );
 	//Wait until Disk is free
@@ -351,6 +369,10 @@ void write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
 
 	INT32 DISK = (INT32) disk_id;
 	INT32 SECT = (INT32) sector;
+
+	if( SCHEDULEpo && (PRINT_COUNT % SCHEDULE_GRAN == 0) ){
+		printState("DISK_W");
+	}
 
 	//ID, Sector, and Data
 	ZCALL( MEM_WRITE( Z502DiskSetID, &DISK ) );
@@ -444,4 +466,15 @@ void get_emptyDisk( INT16 *disk, INT16 *sector){
 	*disk = -1;
 	*sector = -1;
 	return;
+}
+//Check Reference bit of PCB's PageTable
+INT32 checkref_Bit( INT32 page, INT32 ID ){
+	PCB_t * ptrCheck = pidList;
+	while( ptrCheck != NULL ){
+		if( (*ptrCheck->pageTable & PTBL_REFERENCED_BIT) >> 13 == 1){
+			return 1;
+		}
+		ptrCheck = ptrCheck->next;
+	}
+	return 0;
 }

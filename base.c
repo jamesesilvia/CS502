@@ -67,6 +67,7 @@ INT32			event_count = 0;
 INT32			inc_event = 0;
 INT32           LRU = 0;
 INT32           FIFO = 0;
+INT32           RAND = 0;
 
 
 INT32			CREATEpo = 0;
@@ -79,6 +80,14 @@ INT32			SENDpo = 0;
 INT32			RECEIVEpo = 0;
 INT32			WAKEUPpo = 0;
 INT32			FAULTpo = 0;
+INT32           SCHEDULEpo = 0;
+INT32           DISKpo = 0;
+INT32           MEMpo = 0;
+
+INT32           MEM_GRAN = 0;
+INT32           SCHEDULE_GRAN = 0;
+INT32           FAULT_GRAN = 0;
+INT32           PRINT_COUNT = 0;
 
 /************************************************************************
     INTERRUPT_HANDLER
@@ -134,38 +143,54 @@ void    fault_handler( void ) {
     // Now read the status of this device
     MEM_READ(Z502InterruptStatus, &status );
 
-    //State PrintOut
-   if( FAULTpo && DEBUGFLAG){
-        SP_setup( SP_FAULT_MODE, current_PCB->p_id );
-        SP_print_header();
-        SP_print_line();
-    } 
        
     //Switch case on fault device ID.
     //Terminate Process and children on CPU and privledge instruction
     switch(device_id){
         case(CPU_ERROR):
-            debugPrint("CPU ERROR");
-            debugPrint("TERMINATE PROCESS AND CHILDREN");
+            //FAULT PRINTOUT
+            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) ){
+                printf("CPU ERROR\n");
+                printf("TERMINATE PROCESS AND CHILDREN\n");               
+            }
             terminate_Process(-2, &Index);
             MEM_WRITE(Z502InterruptClear, &Index );
             break;
+
         case(PRIVILEGED_INSTRUCTION):
-            debugPrint("ERROR: PRIVILEDGED INSTRUCTION");
-            debugPrint("TERMINATE PROCESS AND CHILDREN");            
+            //FAULT PRINTOUT
+            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) ){
+                printf("ERROR: PRIVILEDGED INSTRUCTION\n");
+                printf("TERMINATE PROCESS AND CHILDREN\n");
+            }                        
             terminate_Process(-2, &Index);
             MEM_WRITE(Z502InterruptClear, &Index );
             break;
+
         case(INVALID_MEMORY):
+            //FAULT PRINTOUT
+            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) ){
+                printf("HANDLING PAGE FAULT: %d\n", status);
+            } 
             //Check page request
             CALL( check_pageSize( status ) );
             //Get frame and manage memory/disks
             CALL( frame = handlePaging( status ) );
 
+            //FAULT PRINTOUT
+            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) ){
+                printf("FRAME RETURNED: %d\n", frame );
+            }
+
             //Setup address with frame and valid bit
-            printf("SETTING FRAME TO: %d\n", frame);
             Z502_PAGE_TBL_ADDR[status] = frame;
             Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
+
+/*            printf("VALID %d\t", (*Z502_PAGE_TBL_ADDR & 0x8000) >> 15);
+            printf("MOD %d\t", (*Z502_PAGE_TBL_ADDR & 0x4000) >> 14);
+            printf("REF %d\t", (*Z502_PAGE_TBL_ADDR & 0x2000) >> 13);
+
+            printf("SUM %d\n", (*Z502_PAGE_TBL_ADDR & 0xE000) >> 13);*/
             
             //Based on Call Type
             //MEMREAD or MEMWRITE
@@ -176,11 +201,11 @@ void    fault_handler( void ) {
                 ZCALL( MEM_WRITE( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
             }
             //Print memory that is being used.
-            printMemory(); 
+            if ( MEMpo && (PRINT_COUNT % MEM_GRAN == 0)){
+                printMemory();
+            }
             break;
     }
-    printf( "Fault_handler: Found vector type %d with value %d\n",
-                        device_id, status );
 
     // Clear out this device - we're done with it
     MEM_WRITE(Z502InterruptClear, &Index );
@@ -199,6 +224,8 @@ void    os_switch_context_complete( void )
     static INT16        do_print = FALSE;
     INT16               call_type;
     MSG_t*              Message;
+
+    PRINT_COUNT++;
 
     //Set the page table address to the current PCB's table    
     Z502_PAGE_TBL_ADDR = current_PCB->pageTable;
@@ -359,36 +386,75 @@ void    os_init( void )
     }
     else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2a" ) == 0 ) ){
         procPTR = test2a;
-        TERMINATEpo = 1;
+
+        MEM_GRAN = 1;
+        FAULT_GRAN = 1;
+        FAULTpo = 1; 
+        MEMpo = 1;      
     }
     else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2b" ) == 0 ) ){
         procPTR = test2b;
-        TERMINATEpo = 1;
+
+        MEM_GRAN = 1;
+        FAULT_GRAN = 1;
+        FAULTpo = 1;  
+        MEMpo = 1;
     }
     else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2c" ) == 0 ) ){
         procPTR = test2c;
-        TERMINATEpo = 1;
+
+        FAULT_GRAN = 10;
+        SCHEDULE_GRAN = 1;
+        FAULTpo = 1;
+        SCHEDULEpo = 1;
     }
     else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2d" ) == 0 ) ){
         procPTR = test2d;
-        TERMINATEpo = 1;
+
+        FAULT_GRAN = 5;
+        SCHEDULE_GRAN = 5;
+        SCHEDULEpo = 1;
+        FAULTpo = 1;
     }
     else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2e" ) == 0 ) ){
         procPTR = test2e;
-        TERMINATEpo = 1;
+        FAULT_GRAN = 5;
+        SCHEDULE_GRAN = 5;
+        MEM_GRAN = 5;
+        LRU = 1;
+
+        FAULTpo = 1;
+        MEMpo = 1;
+        SCHEDULEpo = 1;
     }
+    //FIFO
     else if (( CALLING_ARGC > 1 ) && ( strcmp( CALLING_ARGV[1], "test2f" ) == 0 ) ){
         procPTR = test2f;
-        TERMINATEpo = 1;
+        
+        FAULT_GRAN = 10;
+        MEM_GRAN = 10;
+        FAULTpo = 1;
+        MEMpo = 1;
     }
-    else if (( CALLING_ARGC > 1) && (strcmp( CALLING_ARGV[1], "test2g" ) == 0 ) ){
-        procPTR = test2g;
-        TERMINATEpo = 1;
-    }
+    //Least Recently Used
     else if (( CALLING_ARGC > 1) && (strcmp( CALLING_ARGV[1], "test2h" ) == 0 ) ){
-        procPTR = test2h;
+        procPTR = test2f;
         LRU = 1;
-        TERMINATEpo = 1;
+
+        FAULT_GRAN = 10;
+        MEM_GRAN = 10;
+        FAULTpo = 1;
+        MEMpo = 1;
+    }
+    //Random Frame
+    else if (( CALLING_ARGC > 1) && (strcmp( CALLING_ARGV[1], "test2i" ) == 0 ) ){
+        procPTR = test2f;
+        RAND = 1;
+
+        FAULT_GRAN = 10;
+        MEM_GRAN = 10;
+        FAULTpo = 1;
+        MEMpo = 1;
     }
  
     else{
@@ -401,6 +467,7 @@ void    os_init( void )
     while (frame < PHYS_MEM_PGS){ 
         FRAMETABLE_t *Table = (FRAMETABLE_t *)(malloc(sizeof(FRAMETABLE_t)));
         Table->p_id = -1;
+        Table->page = -1;
         Table->page = -1;
         Table->frame = frame;
         Table->refTime = -1;

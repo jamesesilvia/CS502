@@ -208,6 +208,7 @@ extern		SHADOWTABLE_t	*shadowList;
 
 extern		INT32			LRU;
 extern		INT32			FIFO;
+extern		INT32			RAND;
 
 		
 extern		INT16			bitMap[MAX_DISKS][MAX_SECTORS];
@@ -223,4 +224,12 @@ extern		INT32			PRIORITYpo;
 extern		INT32			SENDpo;
 extern		INT32			RECEIVEpo;
 extern		INT32			FAULTpo;
+extern		INT32			MEMpo;
+extern		INT32			DISKpo;
+extern		INT32			SCHEDULEpo;
+extern		INT32			MEM_GRAN;
+extern		INT32			SCHEDULE_GRAN;
+extern		INT32			FAULT_GRAN;
+
+extern		INT32			PRINT_COUNT;
 

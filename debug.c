@@ -120,7 +120,6 @@ void debugPrint ( char * toprint ){
 void printMemory ( void  ){
     FRAMETABLE_t     *ptrCheck;
     ptrCheck = pageList;
-
     while( ptrCheck != NULL ){
         if( ptrCheck->page != -1 ){
             MP_setup( ptrCheck->frame, ptrCheck->p_id, 

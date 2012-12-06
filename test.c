@@ -2134,7 +2134,7 @@ void    test2e( void )
 
 #define                 NUMBER_OF_ITERATIONS            3
 #define                 LOOP_COUNT                    400
-#define                 DISPLAY_GRANULARITY2          1
+#define                 DISPLAY_GRANULARITY2          10
 #define                 LOGICAL_PAGES_TO_TOUCH       2 * PHYS_MEM_PGS
 
 typedef struct
@@ -2261,32 +2261,6 @@ void    test2f( void )
     Z502_REG_8  - returned error code from the GET_PROCESS_ID call.
 
 **************************************************************************/
-void    test2h( void ){
-    static      INT32         trash;
-                INT32         LRU;
-
-    LRU = 1;
-
-    while(1) {
-        SELECT_STEP {
-           STEP( 0 )
-                GET_PROCESS_ID( "", &Z502_REG_4, &Z502_REG_5 );
-
-           STEP( 1 )
-                printf( "\n\nRelease %s:Test 2g: Pid %ld\n", 
-                                                CURRENT_REL, Z502_REG_4 );
-           STEP( 2 )
-                CREATE_PROCESS( "Test", test2f, 1, &trash, &Z502_REG_5 );
-
-            STEP( 3 )
-                SLEEP( 50000 );
-
-            STEP( 4 )
-                TERMINATE_PROCESS( -1, &Z502_REG_5 );
-        }
-    }
-
-}
 
 #define           MOST_FAVORABLE_PRIORITY                       1
 
