@@ -149,7 +149,7 @@ void    fault_handler( void ) {
     switch(device_id){
         case(CPU_ERROR):
             //FAULT PRINTOUT
-            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) ){
+            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) && DEBUGFLAG){
                 printf("CPU ERROR\n");
                 printf("TERMINATE PROCESS AND CHILDREN\n");               
             }
@@ -159,7 +159,7 @@ void    fault_handler( void ) {
 
         case(PRIVILEGED_INSTRUCTION):
             //FAULT PRINTOUT
-            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) ){
+            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) && DEBUGFLAG){
                 printf("ERROR: PRIVILEDGED INSTRUCTION\n");
                 printf("TERMINATE PROCESS AND CHILDREN\n");
             }                        
@@ -169,7 +169,7 @@ void    fault_handler( void ) {
 
         case(INVALID_MEMORY):
             //FAULT PRINTOUT
-            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) ){
+            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) && DEBUGFLAG){
                 printf("HANDLING PAGE FAULT: %d\n", status);
             } 
             //Check page request
@@ -178,19 +178,13 @@ void    fault_handler( void ) {
             CALL( frame = handlePaging( status ) );
 
             //FAULT PRINTOUT
-            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) ){
+            if ( FAULTpo && (PRINT_COUNT % FAULT_GRAN == 0) && DEBUGFLAG){
                 printf("FRAME RETURNED: %d\n", frame );
             }
 
             //Setup address with frame and valid bit
             Z502_PAGE_TBL_ADDR[status] = frame;
             Z502_PAGE_TBL_ADDR[status] |= PTBL_VALID_BIT;
-
-/*            printf("VALID %d\t", (*Z502_PAGE_TBL_ADDR & 0x8000) >> 15);
-            printf("MOD %d\t", (*Z502_PAGE_TBL_ADDR & 0x4000) >> 14);
-            printf("REF %d\t", (*Z502_PAGE_TBL_ADDR & 0x2000) >> 13);
-
-            printf("SUM %d\n", (*Z502_PAGE_TBL_ADDR & 0xE000) >> 13);*/
             
             //Based on Call Type
             //MEMREAD or MEMWRITE
@@ -201,7 +195,7 @@ void    fault_handler( void ) {
                 ZCALL( MEM_WRITE( (INT32) Z502_ARG1.VAL, (INT32 *)Z502_ARG2.PTR ) );
             }
             //Print memory that is being used.
-            if ( MEMpo && (PRINT_COUNT % MEM_GRAN == 0)){
+            if ( MEMpo && (PRINT_COUNT % MEM_GRAN == 0) && DEBUGFLAG){
                 printMemory();
             }
             break;
@@ -458,7 +452,7 @@ void    os_init( void )
     }
  
     else{
-        printf("NO TEST SELECTED, HALT!!!");
+        printf("NO TEST SELECTED, HALT!!!\n");
         Z502_HALT();
     }
 

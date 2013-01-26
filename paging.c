@@ -329,7 +329,7 @@ void read_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
 	INT32	SECT = sector;
 	memset(&DATA[0], 0, sizeof(DATA));
 
-	if( SCHEDULEpo && (PRINT_COUNT % SCHEDULE_GRAN == 0) ){
+	if( SCHEDULEpo && (PRINT_COUNT % SCHEDULE_GRAN == 0) && DEBUGFLAG){
 		printState("DISK_R");
 	}
 
@@ -370,7 +370,7 @@ void write_Disk( INT16 disk_id, INT16 sector, char DATA[PGSIZE] ){
 	INT32 DISK = (INT32) disk_id;
 	INT32 SECT = (INT32) sector;
 
-	if( SCHEDULEpo && (PRINT_COUNT % SCHEDULE_GRAN == 0) ){
+	if( SCHEDULEpo && (PRINT_COUNT % SCHEDULE_GRAN == 0) && DEBUGFLAG ){
 		printState("DISK_W");
 	}
 

@@ -42,7 +42,7 @@
 
 
 //debugPrint, 1 to print, 0 to not print
-#define			DEBUGFLAG 				0
+#define			DEBUGFLAG 				FALSE
 
 //Message TYPEDEF
 typedef			struct{
